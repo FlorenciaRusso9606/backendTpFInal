@@ -30,7 +30,6 @@ const PORT = process.env.PORT || 4000;
 // Middlewares base
 app.use(cors({
   origin: [
-    "http://localhost:3000",
     process.env.FRONTEND_URL,
       process.env.APP_DEEP_LINK,
     "*",
@@ -102,7 +101,7 @@ app.get(
 // Servidor HTTP y Socket.IO
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
-  cors: { origin: "http://localhost:3000", credentials: true },
+  cors: { origin: process.env.FRONTEND_URL, credentials: true },
 });
 app.use(attachIO(io));
 
@@ -130,4 +129,4 @@ io.on("connection", (socket: any) => {
 });
 
 // Start server
-server.listen(PORT, () => console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Servidor corriendo en http://api.bloop.cool:${PORT}`));
