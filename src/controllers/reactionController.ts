@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 
 export const togglePostLike = async (req: Request, res: Response) =>{
     try{
-        const user_id = req.user?.id;
+        const user_id = (req as any).user?.id;
     const {postId} =req.params;
 
     if(!user_id || !postId){
@@ -19,7 +19,7 @@ export const togglePostLike = async (req: Request, res: Response) =>{
 }
 export const toggleCommentLike = async (req: Request, res: Response) =>{
     try{
-        const user_id = req.user?.id;
+        const user_id = (req as any).user?.id;
     const {commentId} =req.params;
           console.log("togglePostLike:", { user_id, commentId });
     if(!user_id || !commentId){
@@ -55,7 +55,7 @@ export const getCommentLikes = async (req: Request, res: Response) =>{
 }
 export const checkUserCommentLike = async ( req: Request, res:Response) =>{
     try{
-        const user_id = req.user?.id
+        const user_id = (req as any).user?.id
         const {commentId} = req.params
          if (!user_id || !commentId) {
       return res.status(400).json({ liked: false });
@@ -69,7 +69,7 @@ export const checkUserCommentLike = async ( req: Request, res:Response) =>{
 }  
 export const checkUserPostLike = async ( req: Request,res: Response) =>{
     try{
-        const user_id = req.user?.id
+        const user_id = (req as any).user?.id
         const {postId} = req.params
          if (!user_id || !postId) {
       return res.status(400).json({ liked: false });

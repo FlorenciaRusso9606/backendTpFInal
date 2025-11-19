@@ -4,7 +4,7 @@ import { getUserById } from "../models/userModel"
 
 export async function block(req: Request, res: Response) {
     try {
-        const blockerId = req.user!.id
+        const blockerId = (req as any).user.id
         const targetId = req.params.targetId
 
         if (!targetId) return res.status(400).json({ message: "targetId required" })
@@ -23,7 +23,7 @@ export async function block(req: Request, res: Response) {
 
 export async function unblock(req: Request, res: Response) {
     try {
-        const blockerId = req.user!.id
+        const blockerId = (req as any).user.id
         const targetId = req.params.targetId
 
         if (!targetId) return res.status(400).json({ message: "targetId requerido" })
@@ -39,7 +39,7 @@ export async function unblock(req: Request, res: Response) {
 //Devuelve { blockedByYou, blockedByThem } para la UI 
 export async function status(req: Request, res: Response) {
     try {
-        const viewerId = req.user!.id
+        const viewerId = (req as any).user.id
         const targetId = req.params.targetId
         if (!targetId) return res.status(400).json({ message: "target ID required" })
 

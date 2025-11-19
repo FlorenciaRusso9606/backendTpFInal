@@ -152,3 +152,17 @@ export const getMe = async (req: Request, res: Response) => {
     res.status(401).json({ error: "Token inválido" });
   }
 };
+
+export const getSocketToken = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (!user) return res.status(401).json({ error: "No autenticado" });
+    const secret = process.env.SOCKET_SECRET || process.env.JWT_SECRET;
+    if (!secret) return res.status(500).json({ error: "Server not configured for sockets" });
+    const token = jwt.sign({ id: user.id }, secret, { expiresIn: "2h" });
+    res.json({ token });
+  } catch (err) {
+    console.error("getSocketToken error:", err);
+    res.status(500).json({ error: "Error creando token de socket" });
+  }
+};

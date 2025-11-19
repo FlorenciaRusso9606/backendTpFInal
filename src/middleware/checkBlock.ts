@@ -8,7 +8,7 @@ import * as BlockModel from "../models/blockModel";
  */
 export default async function checkBlock(req: Request, res: Response, next: NextFunction) {
   try {
-    const viewerId = req.user?.id;
+    const viewerId = (req as any).user?.id;
     const targetId = req.params.targetId 
 
     if (!viewerId) return res.status(401).json({ message: "No autenticado" });

@@ -19,7 +19,7 @@ async function validateFollowAction(followerId: string, targetId: string) {
 
 export async function follow(req: Request, res: Response) {
   try {
-    const followerId = req.user!.id;
+    const followerId = (req as any).user.id;
     const targetId = req.params.targetId;
 
     const validation = await validateFollowAction(followerId, targetId);
@@ -35,7 +35,7 @@ export async function follow(req: Request, res: Response) {
 
 export async function unfollow(req: Request, res: Response) {
   try {
-    const followerId = req.user!.id;
+    const followerId = (req as any).user.id;
     const targetId = req.params.targetId;
 
     const validation = await validateFollowAction(followerId, targetId);
@@ -52,7 +52,7 @@ export async function unfollow(req: Request, res: Response) {
 
 export async function getFollowers(req: Request, res: Response) {
   try {
-    const userId = req.params.userId || req.user!.id;
+    const userId = req.params.userId || (req as any).user.id;
     const followers = await FollowModel.getFollowRelations(userId, "followers");
     res.json(followers);
   } catch (err) {
@@ -63,7 +63,7 @@ export async function getFollowers(req: Request, res: Response) {
 
 export async function getFollowing(req: Request, res: Response) {
   try {
-    const userId = req.params.userId || req.user!.id;
+    const userId = req.params.userId || (req as any).user.id;
     const following = await FollowModel.getFollowRelations(userId, "following");
     res.json(following);
   } catch (err) {
@@ -74,7 +74,7 @@ export async function getFollowing(req: Request, res: Response) {
 
 export async function status(req: Request, res: Response) {
   try {
-    const viewerId = req.user!.id;
+    const viewerId = (req as any).user.id;
     const targetId = req.params.userId;
 
     if (!targetId) return res.status(400).json({ message: "targetId required" });

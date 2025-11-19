@@ -14,5 +14,6 @@ router.use(authenticateJWT);
 
 router.get("/me", AuthController.getMe);
 router.post("/logout", AuthController.logoutUser);
+router.get("/socket-token", AuthController.getSocketToken);
 
 export default router;
