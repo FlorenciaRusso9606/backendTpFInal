@@ -1,0 +1,93 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const axios_1 = __importDefault(require("axios"));
+const bcrypt_1 = __importDefault(require("bcrypt"));
+const crypto_1 = __importDefault(require("crypto"));
+const db_1 = __importDefault(require("../src/db"));
+const authModel_1 = require("../src/models/authModel");
+const userModel_1 = require("../src/models/userModel");
+async function seedUsers(count = 10) {
+    if (process.env.NODE_ENV !== "development") {
+        console.error("This script can only be executed in development environment");
+        process.exit(1);
+    }
+    console.log(`\n🚀 Iniciando seed: ${count} usuarios aleatorios...\n`);
+    let inserted = 0;
+    let skipped = 0;
+    let errors = 0;
+    try {
+        const { data } = await axios_1.default.get(`https://randomuser.me/api/?results=${count}`);
+        const randomUsers = data.results;
+        for (const rUser of randomUsers) {
+            const email = rUser.email?.toLowerCase();
+            const username = rUser.login.username;
+            // evita usuarios con datos incompletos
+            if (!email || !username) {
+                console.warn(`Invalid User: Without Email or Username -- Skipped`);
+                skipped++;
+                continue;
+            }
+            const existing = await (0, authModel_1.findUserByIdentifier)(email);
+            if (existing) {
+                console.log(`User already exists: ${username} (${email})`);
+                skipped++;
+                continue;
+            }
+            // genera los datos
+            const id = crypto_1.default.randomUUID();
+            const password_hash = await bcrypt_1.default.hash("password123", 10);
+            const displayname = `${rUser.name.first} ${rUser.name.last}`;
+            const bio = "Usuario generado automáticamente para desarrollo";
+            const profile_picture_url = rUser.picture.large;
+            const city = rUser.location.city;
+            const country_iso = rUser.nat;
+            const role = "USER";
+            const status = "ACTIVE";
+            // crea el objeto del usuario
+            const user = {
+                id,
+                email,
+                password_hash,
+                username,
+                displayname,
+                bio,
+                profile_picture_url,
+                created_at: new Date(),
+                updated_at: new Date(),
+                role,
+                status,
+                city,
+                country_iso,
+            };
+            // Inserta el usuario
+            try {
+                await (0, userModel_1.insertUser)(user);
+                inserted++;
+                console.log(`--> Inserted: ${username}`);
+            }
+            catch (err) {
+                errors++;
+                console.error(`Error inserting ${username}:`, err.message);
+            }
+        }
+        // Final debugging 
+        console.log("\nSEED COMPLETED");
+        console.log("---------------------------");
+        console.log(`Inserted: ${inserted}`);
+        console.log(`Skipped: ${skipped}`);
+        console.log(`Errors: ${errors}`);
+        console.log("---------------------------\n");
+    }
+    catch (err) {
+        console.error("❌ Error general del seed:", err);
+    }
+    finally {
+        if (typeof db_1.default.end === "function")
+            await db_1.default.end();
+        process.exit(0);
+    }
+}
+seedUsers(15);

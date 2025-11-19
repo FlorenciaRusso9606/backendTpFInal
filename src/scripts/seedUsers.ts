@@ -1,10 +1,10 @@
 import axios from "axios";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import db from "../src/db";
-import { findUserByIdentifier } from "../src/models/authModel";
-import { insertUser } from "../src/models/userModel";
-import type {  DbUser } from "../src/types/user";
+import db from "../db";
+import { findUserByIdentifier } from "../models/authModel";
+import { insertUser } from "../models/userModel";
+import type {  DbUser } from "../types/user";
 
 async function seedUsers(count = 10) {
   if (process.env.NODE_ENV !== "development") {
