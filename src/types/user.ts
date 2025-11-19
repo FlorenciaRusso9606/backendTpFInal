@@ -14,7 +14,6 @@ export interface User {
   following_count?: number;
   city?: string;
   country_iso?: string;
- 
 }
 
 export interface DbUser extends User {
@@ -22,19 +21,17 @@ export interface DbUser extends User {
 }
 
 export interface PostUser {
-  id: string
-  username: string
-  displayname: string
-  profile_picture_url?: string
+  id: string;
+  username: string;
+  displayname: string;
+  profile_picture_url?: string;
 }
 
-// Estado de bloqueo entre dos usuarios
 export interface BlockStatus {
   blockedByYou: boolean;
   blockedByThem: boolean;
 }
 
-// Estado de seguimiento entre dos usuarios
 export interface FollowStatus {
   isFollowing: boolean;
   isFollowedBy: boolean;

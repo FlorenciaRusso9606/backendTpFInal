@@ -4,7 +4,7 @@ import crypto from "crypto";
 import db from "../src/db";
 import { findUserByIdentifier } from "../src/models/authModel";
 import { insertUser } from "../src/models/userModel";
-import type { DbUser } from "../src/types/user";
+import type {  DbUser } from "../src/types/user";
 
 async function seedUsers(count = 10) {
   if (process.env.NODE_ENV !== "development") {
