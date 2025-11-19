@@ -42,7 +42,8 @@ export async function isFollowing(followerId: string, followedId: string) {
     `SELECT 1 FROM follow WHERE follower_id = $1 AND followed_id = $2`,
     [followerId, followedId]
   );
-  return rowCount > 0;
+ return (rowCount ?? 0) > 0;
+
 }
 
 export async function getFollowRelations(userId: string, relation: "followers" | "following") {

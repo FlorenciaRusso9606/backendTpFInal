@@ -15,8 +15,8 @@ type CommentRow = {
   author_username: string;
   post_id: string;
   text: string;
-  parent_id?: string | null;
-  created_at: Date;
+  parent_id?: string |number | null
+  created_at: string;
 };
 type CommentNode = CommentRow & { children: CommentNode[] };
 
@@ -29,7 +29,7 @@ function buildCommentTree(comments: CommentRow[]): CommentNode[] {
   comments.forEach(c => {
     const node = map.get(c.id)!;
     if (c.parent_id) {
-      const parent = map.get(c.parent_id);
+const parent = map.get(String(c.parent_id));
       if (parent) parent.children.push(node);
       else roots.push(node); 
     } else {

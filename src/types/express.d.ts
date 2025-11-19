@@ -1,12 +1,24 @@
-import { User } from "./user";
+// src/types/express.d.ts
+
+import "express";
+import type { User } from "./user";
+import type { Server as SocketIOServer } from "socket.io";
+import type { File as MulterFile } from "multer";
 
 declare global {
   namespace Express {
+    interface SessionData {
+      mobileRedirect?: string;
+    }
+
     interface Request {
-      file?: Express.Multer.File;
-      files?: Express.Multer.File[];
-      session?: any;
       user?: User | null;
+      session?: Session & Partial<SessionData>;
+      io?: SocketIOServer;
+
+      // Multer
+      file?: MulterFile;
+      files?: MulterFile[];
     }
   }
 }

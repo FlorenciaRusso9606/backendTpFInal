@@ -11,7 +11,8 @@ export const togglePostLikeDB = async (user_id: string, post_id: string) : Promi
     const existing = await db.query<Reaction>(`
         SELECT 1 FROM reaction WHERE user_id = $1 and post_id = $2
         `, [user_id, post_id]);
-    if(existing.rowCount>0){
+
+    if(existing.rowCount ?? 0){
         await db.query<Reaction>(`DELETE FROM reaction WHERE user_id = $1 AND post_id = $2`, [user_id, post_id]);
          return {liked: false}
     }else{
@@ -26,7 +27,7 @@ export const toggleCommenLikeDB = async (user_id: string, comment_id: string) : 
     const existing = await db.query<Reaction>(`
         SELECT 1 FROM reaction WHERE user_id = $1 and comment_id = $2
         `, [user_id, comment_id]);
-    if(existing.rowCount>0){
+    if(existing.rowCount ?? 0){
         await db.query<Reaction>(`DELETE FROM reaction WHERE user_id = $1 AND comment_id = $2`, [user_id, comment_id]);
          return {liked: false}
     }else{

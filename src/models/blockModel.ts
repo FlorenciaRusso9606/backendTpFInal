@@ -45,7 +45,8 @@ export async function hasBlocked(blockerId: string, blockedId: string) {
         `SELECT 1 FROM blocks WHERE blocker_id = $1 AND blocked_id = $2 LIMIT 1`,
         [blockerId, blockedId]
     )
-    return res.rowCount > 0
+    return (res.rowCount ?? 0) > 0;
+
 }
 
 /** Devuelve true si existe bloqueo en cualquiera de las dos direcciones */
@@ -56,7 +57,8 @@ export async function isEitherBlocked(a: string, b: string) {
      LIMIT 1`,
         [a, b]
     )
-    return res.rowCount > 0
+    return (res.rowCount ?? 0) > 0;
+
 }
 
 /** Estado combinado útil para el frontend */
