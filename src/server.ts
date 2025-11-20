@@ -23,6 +23,9 @@ import countryRoutes from "./routes/countryRoutes";
 import weatherRoutes from "./routes/weatherRoutes";
 import photoRoutes from "./routes/photoRoutes";
 import { crearJWT } from "./utils/createJWT";
+import "express-session";
+import { ENV } from "./config/env";
+import { crearJWT } from "./utils/createJWT";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -30,20 +33,15 @@ const PORT = process.env.PORT || 8080;
 app.use(
   cors({
     origin: [
-      "https://www.bloop.cool",
-      "https://bloop.cool",
-      "http://localhost:3000",
-      "http://localhost:8081",
-      "http://192.168.0.228:8081",
-      "exp://*",
-      process.env.FRONTEND_URL,
-      process.env.BACKEND_URL,
-    ],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+   ENV.FRONTEND_URL,
+    "http://localhost:3000",
+    "http://localhost:8081",
+    "exp://*",
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -111,13 +109,13 @@ const server = http.createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
     origin: [
-      "https://www.bloop.cool",
-      "https://bloop.cool",
+      ENV.FRONTEND_URL,
       "http://localhost:3000",
-      process.env.FRONTEND_URL,
+      "http://localhost:8081",
+      "exp://*"
     ],
-    credentials: true,
-  },
+    credentials: true
+  }
 });
 
 app.use(attachIO(io));
