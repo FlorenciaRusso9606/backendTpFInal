@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const session = require("express-session");
 
 import type { Request, Response, NextFunction } from "express";
+import dotenv from "dotenv";
 
 import translationRoutes from "./routes/translationRoutes";
 import authRoutes from "./routes/authRoutes";
@@ -24,10 +25,13 @@ import weatherRoutes from "./routes/weatherRoutes";
 import photoRoutes from "./routes/photoRoutes";
 import "express-session";
 import { ENV } from "./config/env";
+dotenv.config();
 import { crearJWT } from "./utils/createJWT";
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT ;
+const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
+
 
 app.use(
   cors({
@@ -144,5 +148,5 @@ io.on("connection", (socket: any) => {
 
 // Iniciar servidor
 server.listen(PORT, () =>
-  console.log(`🚀 Servidor corriendo en https://api.bloop.cool:${PORT}`)
+  console.log(`🚀 Servidor corriendo en ${BACKEND_URL}`)
 );

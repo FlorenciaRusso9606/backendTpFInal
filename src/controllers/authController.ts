@@ -5,98 +5,89 @@ import * as jwt from "jsonwebtoken";
 import { sendVerificationEmail } from "../utils/mailer";
 import * as AuthModel from "../models/authModel";
 import * as UserModel from "../models/userModel";
-const JWT_SECRET = process.env.JWT_SECRET;
 
+// Generación segura del secreto: usa env en prod, aleatorio en dev
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString("hex");
 
-// registrar usuario
+// Registrar usuario
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const { email, username, password, displayname } = req.body;
-    if (!email || !username || !password || !displayname) {
-      return res.status(400).json({ error: "Faltan campos obligatorios" })
-    }
-    const existing = await AuthModel.findUserByIdentifier(email);
-    if (existing) {
-      return res.status(409).json({ error: "El email ya está registrado" });
-    }
-    const hashed = await bcrypt.hash(password, 10);
-    const newUser = await AuthModel.createUserPendingVerification(email, username, hashed, displayname);
+    if (!email || !username || !password || !displayname)
+      return res.status(400).json({ error: "Faltan campos obligatorios" });
 
-    // token aleatorio
+    // Verificar existencia de email/username
+    const existingEmail = await AuthModel.findUserByIdentifier(email);
+    const existingUsername = await AuthModel.findUserByIdentifier(username);
+    if (existingEmail) return res.status(409).json({ error: "El email ya está registrado" });
+    if (existingUsername) return res.status(409).json({ error: "El usuario ya está registrado" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await AuthModel.createUserPendingVerification(email, username, hashedPassword, displayname);
+
+    // Token de verificación por email
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
-
     await AuthModel.createEmailVerification(newUser.id, token, expiresAt);
-    await sendVerificationEmail(newUser.email, token);
+
+    try {
+      await sendVerificationEmail(newUser.email, token);
+    } catch (mailErr) {
+      console.error("Error enviando email:", mailErr);
+    }
+
     const { password_hash, ...safeUser } = newUser;
-    res.status(201).json({ user: safeUser, message: "Revisa tu email para verificar la cuenta" });;
-  }
-  catch (err) {
-    console.error(err);
+    res.status(201).json({ user: safeUser, message: "Registro exitoso 🎉 Revisa tu correo para activar la cuenta" });
+  } catch (err) {
+    console.error("Error al registrar usuario:", err);
     res.status(500).json({ error: "Error al registrar usuario" });
   }
-}
+};
 
-
+// Login usuario
 export const loginUser = async (req: Request, res: Response) => {
   try {
     const { identifier, password } = req.body;
-
-    if (!identifier || !password) {
-      return res.status(400).json({ error: "Faltan credenciales" });
-    }
+    if (!identifier || !password) return res.status(400).json({ error: "Faltan credenciales" });
 
     const user = await AuthModel.findUserByIdentifier(identifier);
     if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
-    if (user.status !== "ACTIVE") {
-      return res.status(403).json({ error: "Cuenta no verificada. Revisa tu correo." });
-    }
+    if (user.status !== "ACTIVE") return res.status(403).json({ error: "Cuenta no verificada" });
 
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: "Credenciales incorrectas" });
 
-    if (!JWT_SECRET) throw new Error("Falta JWT_SECRET");
+    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
+    // Cookie segura según entorno
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      domain: ".bloop.cool",
-      path: "/",       
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     const { password_hash, ...safeUser } = user;
-
-    return res.json({
-      message: "Login exitoso",
-      token,
-      user: safeUser,
-    });
+    return res.json({ message: "Login exitoso", token, user: safeUser });
   } catch (err) {
     console.error("Login error:", err);
     return res.status(500).json({ error: "Error al iniciar sesión" });
   }
 };
 
-// logout usuario 
+// Logout
 export const logoutUser = (req: Request, res: Response) => {
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    path: "/",
   });
   res.json({ message: "Logout exitoso" });
 };
 
-
-// verificar usuario
+// Verificar usuario por email
 export const verifyUser = async (req: Request, res: Response) => {
   try {
     const token = String(req.query.token || req.body.token || "");
@@ -104,18 +95,11 @@ export const verifyUser = async (req: Request, res: Response) => {
 
     const verification = await AuthModel.findVerificationByToken(token);
     if (!verification) return res.status(400).json({ error: "Token inválido" });
-
-    if (verification.used) {
-      return res.status(200).json({ success: true, message: "Token ya usado, cuenta ya activada" });
-    }
-
-    if (new Date(verification.expires_at) < new Date())
-      return res.status(400).json({ error: "Token expirado" });
-
+    if (verification.used) return res.status(200).json({ success: true, message: "Token ya usado" });
+    if (new Date(verification.expires_at) < new Date()) return res.status(400).json({ error: "Token expirado" });
 
     await AuthModel.activateUser(verification.user_id);
     await AuthModel.markVerificationUsed(verification.id);
-
 
     return res.json({ success: true, message: "Cuenta activada" });
   } catch (err) {
@@ -124,18 +108,23 @@ export const verifyUser = async (req: Request, res: Response) => {
   }
 };
 
+// Obtener usuario actual
 export const getMe = async (req: Request, res: Response) => {
   try {
     let token = req.cookies.token;
-
-    // también aceptar el header Authorization
     if (!token && req.headers.authorization?.startsWith("Bearer ")) {
       token = req.headers.authorization.split(" ")[1];
     }
-
     if (!token) return res.status(401).json({ error: "No autenticado" });
 
-    const decoded: any = jwt.verify(token, JWT_SECRET!);
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
+      res.clearCookie("token"); // limpiar cookie inválida
+      return res.status(401).json({ error: "Token inválido" });
+    }
+
     const user = await UserModel.findUserById(decoded.id);
     if (!user) return res.status(404).json({ error: "Usuario no encontrado" });
 
@@ -149,19 +138,31 @@ export const getMe = async (req: Request, res: Response) => {
       bio: user.bio,
       profilePicture: user.profile_picture_url,
       country_iso: user.country_iso,
-      city: user.city
+      city: user.city,
     });
   } catch (err) {
+    console.error("getMe error:", err);
+    res.status(500).json({ error: "Error obteniendo usuario" });
+     res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/",
+    });
     res.status(401).json({ error: "Token inválido" });
+  
   }
 };
 
+// Token para sockets
 export const getSocketToken = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     if (!user) return res.status(401).json({ error: "No autenticado" });
+
     const secret = process.env.SOCKET_SECRET || process.env.JWT_SECRET;
     if (!secret) return res.status(500).json({ error: "Server not configured for sockets" });
+
     const token = jwt.sign({ id: user.id }, secret, { expiresIn: "2h" });
     res.json({ token });
   } catch (err) {
