@@ -22,7 +22,7 @@ import weatherRoutes from "./routes/weatherRoutes";
 import photoRoutes from "./routes/photoRoutes";
 import { crearJWT } from "./utils/createJWT";
 import "express-session";
-
+import { ENV } from "./config/env";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -30,14 +30,10 @@ const PORT = process.env.PORT || 8080;
 // Middlewares base
 app.use(cors({
     origin: [
-    "https://www.bloop.cool",
-    "https://bloop.cool",
-    "exp://*", 
+   ENV.FRONTEND_URL,
+    "http://localhost:3000",
     "http://localhost:8081",
-     "http://localhost:3000",
-    "http://192.168.0.228:8081", 
-    process.env.FRONTEND_URL,
-    process.env.BACKEND_URL,
+    "exp://*",
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
@@ -106,18 +102,17 @@ app.get(
 // Servidor HTTP y Socket.IO
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
- cors: { 
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:8081",
-    "exp://*",
-    "https://bloop.cool",
-    "https://www.bloop.cool",
-    process.env.FRONTEND_URL,
-  ],
-  credentials: true
-}
+  cors: {
+    origin: [
+      ENV.FRONTEND_URL,
+      "http://localhost:3000",
+      "http://localhost:8081",
+      "exp://*"
+    ],
+    credentials: true
+  }
 });
+
 app.use(attachIO(io));
 
 // Rutas principales
