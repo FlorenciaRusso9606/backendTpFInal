@@ -33,7 +33,9 @@ app.use(cors({
     "https://www.bloop.cool",
     "https://bloop.cool",
     "exp://*", 
-    "http://localhost:8081", 
+    "http://localhost:8081",
+     "http://localhost:3000",
+    "http://192.168.0.228:8081", 
     process.env.FRONTEND_URL,
     process.env.BACKEND_URL,
   ],
@@ -104,10 +106,17 @@ app.get(
 // Servidor HTTP y Socket.IO
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
-  cors: { origin: [process.env.FRONTEND_URL, "https://www.bloop.cool",
-      "https://bloop.cool",
-      "exp://*", 
-      "http://localhost:*",], credentials: true },
+ cors: { 
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:8081",
+    "exp://*",
+    "https://bloop.cool",
+    "https://www.bloop.cool",
+    process.env.FRONTEND_URL,
+  ],
+  credentials: true
+}
 });
 app.use(attachIO(io));
 
