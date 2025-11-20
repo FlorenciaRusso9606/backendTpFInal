@@ -29,10 +29,13 @@ const PORT = process.env.PORT || 8080;
 
 // Middlewares base
 app.use(cors({
-  origin: [
+    origin: [
+    "https://www.bloop.cool",
+    "https://bloop.cool",
+    "exp://*", 
+    "http://localhost:8081", 
     process.env.FRONTEND_URL,
-      process.env.APP_DEEP_LINK,
-    "*",
+    process.env.BACKEND_URL,
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
@@ -101,7 +104,10 @@ app.get(
 // Servidor HTTP y Socket.IO
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
-  cors: { origin: process.env.FRONTEND_URL, credentials: true },
+  cors: { origin: [process.env.FRONTEND_URL, "https://www.bloop.cool",
+      "https://bloop.cool",
+      "exp://*", 
+      "http://localhost:*",], credentials: true },
 });
 app.use(attachIO(io));
 
