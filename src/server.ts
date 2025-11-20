@@ -22,7 +22,6 @@ import passport from "./config/passport";
 import countryRoutes from "./routes/countryRoutes";
 import weatherRoutes from "./routes/weatherRoutes";
 import photoRoutes from "./routes/photoRoutes";
-import { crearJWT } from "./utils/createJWT";
 import "express-session";
 import { ENV } from "./config/env";
 import { crearJWT } from "./utils/createJWT";
