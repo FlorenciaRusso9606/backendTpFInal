@@ -40,37 +40,40 @@ export const registerUser = async (req: Request, res: Response) => {
 
 export const loginUser = async (req: Request, res: Response) => {
   try {
-    const { identifier, password } = req.body
+    const { identifier, password } = req.body;
 
-    if (!password || !identifier) {
-      return res.status(400).json({ error: "Faltan credenciales" })
-    };
-
-
-    const user = await AuthModel.findUserByIdentifier(identifier)
-    if (!user) {
-      return res.status(401).json({ error: "Credenciales inválidas" })
+    if (!identifier || !password) {
+      return res.status(400).json({ error: "Faltan credenciales" });
     }
+
+    const user = await AuthModel.findUserByIdentifier(identifier);
+    if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
     if (user.status !== "ACTIVE") {
       return res.status(403).json({ error: "Cuenta no verificada. Revisa tu correo." });
     }
+
     const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) {
-      return res.status(401).json({ error: "Credenciales incorrectas" })
+    if (!match) return res.status(401).json({ error: "Credenciales incorrectas" });
 
-    }
-    if (!JWT_SECRET) throw new Error("Falta JWT_SECRET en variables de entorno");
+    if (!JWT_SECRET) throw new Error("Falta JWT_SECRET");
 
-    const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "7d" })
-     res.cookie("token", token, {
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie("token", token, {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+      domain: ".bloop.cool",
+      path: "/",       
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    // Devolver token y user para mobile
     const { password_hash, ...safeUser } = user;
+
     return res.json({
       message: "Login exitoso",
       token,
@@ -78,9 +81,9 @@ export const loginUser = async (req: Request, res: Response) => {
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ error: "Error al iniciar sesión" });
+    return res.status(500).json({ error: "Error al iniciar sesión" });
   }
-}
+};
 
 // logout usuario 
 export const logoutUser = (req: Request, res: Response) => {
@@ -100,14 +103,14 @@ export const verifyUser = async (req: Request, res: Response) => {
     if (!token) return res.status(400).json({ error: "Token faltante" });
 
     const verification = await AuthModel.findVerificationByToken(token);
-if (!verification) return res.status(400).json({ error: "Token inválido" });
+    if (!verification) return res.status(400).json({ error: "Token inválido" });
 
-if (verification.used) {
-  return res.status(200).json({ success: true, message: "Token ya usado, cuenta ya activada" });
-}
+    if (verification.used) {
+      return res.status(200).json({ success: true, message: "Token ya usado, cuenta ya activada" });
+    }
 
-if (new Date(verification.expires_at) < new Date())
-  return res.status(400).json({ error: "Token expirado" });
+    if (new Date(verification.expires_at) < new Date())
+      return res.status(400).json({ error: "Token expirado" });
 
 
     await AuthModel.activateUser(verification.user_id);
