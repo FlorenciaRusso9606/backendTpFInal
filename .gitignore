@@ -14,6 +14,9 @@
 # testing
 /coverage
 
+#workspace settings
+/src/backend.code-workspace
+
 # next.js
 /.next/
 /out/
