@@ -18,7 +18,7 @@ export const registerUser = async (req: Request, res: Response) => {
 
     // Verificar existencia de email/username
     const existingEmail = await AuthModel.findUserByIdentifier(email);
-    const existingUsername = await AuthModel.findUserByIdentifier(username, "username");
+    const existingUsername = await AuthModel.findUserByIdentifier(username);
     if (existingEmail) return res.status(409).json({ error: "El email ya está registrado" });
     if (existingUsername) return res.status(409).json({ error: "El usuario ya está registrado" });
 

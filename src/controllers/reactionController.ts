@@ -1,4 +1,4 @@
-import { getPostLikesCount, getCommentLikesCount, toggleCommenLikeDB, togglePostLikeDB, getCheckLikedCommentDB, getCheckLikedPostDB} from "../models/reactionModel";
+import { getPostLikesCount, getCommentLikesCount, toggleCommenLikeDB, togglePostLikeDB, getCheckLikedCommentDB, getCheckLikedPostDB, getMyLikes} from "../models/reactionModel";
 import { Request, Response } from "express";
 
 export const togglePostLike = async (req: Request, res: Response) =>{
@@ -81,3 +81,14 @@ export const checkUserPostLike = async ( req: Request,res: Response) =>{
             res.status(500).json({ liked: false });
     }
 }  
+
+export const myLikes = async (req: Request, res:Response) =>{
+    const user_id = (req as any).user?.id
+    try{
+        const likes = await getMyLikes(user_id)
+        return res.status(200).json(likes)
+    }catch(err: any){
+        console.error("Error al traer los likes")
+        res.status(500).json({message: "Error al traer los likes", err})
+    }
+}

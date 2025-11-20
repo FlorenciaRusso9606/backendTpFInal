@@ -31,3 +31,31 @@ export async function sendVerificationEmail(to: string, token: string) {
     console.error("Error enviando email a", to, err);
   }
 }
+export async function sendStatusChangeEmail(to: string, newStatus: string) {
+  const statusText =
+    newStatus === "SUSPENDED"
+      ? "Tu cuenta ha sido suspendida temporalmente."
+      : "Tu cuenta ha sido reactivada y ya podés ingresar nuevamente.";
+
+  const html = `
+    <p>Hola,</p>
+    <p>${statusText}</p>
+    <p>Si creés que se trata de un error, contactá a soporte.</p>
+  `;
+
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to,
+      subject:
+        newStatus === "SUSPENDED"
+          ? "Tu cuenta ha sido suspendida"
+          : "Tu cuenta ha sido reactivada",
+      html,
+    });
+
+    console.log(`Email de estado "${newStatus}" enviado a ${to}`);
+  } catch (err) {
+    console.error("Error enviando email de cambio de estado a", to, err);
+  }
+}
