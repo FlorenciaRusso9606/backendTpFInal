@@ -55,9 +55,9 @@ app.use(
     origin:
       process.env.NODE_ENV === "production"
         ? [
-            ENV.FRONTEND_URL,
+             "https://www.bloop.cool",
             "https://bloop.cool",
-            "https://www.bloop.cool",
+            
           ]
         : [
             "http://localhost:3000",
@@ -85,6 +85,7 @@ app.use(
     secret: process.env.SESSION_SECRET || "supersecret",
     resave: false,
     saveUninitialized: false,
+    proxy: true, 
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
