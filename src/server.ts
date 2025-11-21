@@ -57,6 +57,7 @@ app.use(
         ? [
              "https://www.bloop.cool",
             "https://bloop.cool",
+            "https://api.bloop.cool"
             
           ]
         : [
@@ -66,7 +67,7 @@ app.use(
           ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders:  ["Content-Type", "content-type", "Authorization", "authorization"],
+    allowedHeaders:  ["Content-Type", "content-type", "Authorization", "authorization",  "Set-Cookie"],
   })
 );
 
