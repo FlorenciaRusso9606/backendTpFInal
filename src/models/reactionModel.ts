@@ -59,7 +59,22 @@ export const getCheckLikedCommentDB = async (user_id:string | undefined, comment
     const result = await db.query(`SELECT 1 FROM reaction WHERE user_id= $1 AND comment_id = $2`, [user_id, commentId])
     return result.rowCount
 }
-export const getMyLikes = async (user_id: string | undefined) =>{
-    const result = await db.query(`SELECT * FROM reaction WHERE user_id = $1`, [user_id])
-    return result.rows
-}
+export const getMyLikedPosts = async (user_id: string) => {
+    const result = await db.query(`
+        SELECT
+            p.id,
+            p.text AS content,
+            p.created_at,
+            
+            u.id AS author_id,
+            u.username AS author_username,
+             u.profile_picture_url AS post_author_avatar
+
+        FROM reaction r
+        JOIN post p       ON r.post_id = p.id
+        JOIN users u      ON p.author_id = u.id
+        WHERE r.user_id = $1
+        ORDER BY r.created_at DESC
+    `, [user_id]);
+    return result.rows;
+};

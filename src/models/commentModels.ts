@@ -127,3 +127,25 @@ export const findCommentDB = async (commentId: string) => {
   );
   return result.rows[0];
 };
+export const getMyComments = async (user_id: string) => {
+    const result = await db.query(`
+        SELECT 
+            c.id,
+            c.text AS content,
+            c.created_at,
+
+            p.id AS post_id,
+            p.text AS post_content,
+
+            u.username AS post_author,
+            u.profile_picture_url AS post_author_avatar
+
+
+        FROM user_comments c
+        JOIN post p  ON c.post_id = p.id
+        LEFT JOIN users u ON p.author_id = u.id
+        WHERE c.author_id = $1
+        ORDER BY c.created_at DESC
+    `, [user_id]);
+    return result.rows;
+};

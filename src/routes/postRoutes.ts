@@ -3,12 +3,13 @@ import {
   createPostController, 
   listPostsController, 
   getPostByIdController,
-  sharePostController, isSharedPostController
+  sharePostController, isSharedPostController,
+  getMyRepost
 } from "../controllers/postController";
 import { authenticateJWT } from "../middleware/auth";
 
 const router = Router();
-
+router.get("/mine/shared", authenticateJWT, getMyRepost)
 router.get("/", listPostsController);
 router.get("/mine", authenticateJWT, (req, res) => require("../controllers/postController").myPostsController(req, res));
 router.get("/following", authenticateJWT, (req, res) => require("../controllers/postController").listFollowingPostsController(req, res));
