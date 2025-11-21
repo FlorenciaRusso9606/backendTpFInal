@@ -31,28 +31,55 @@ dotenv.config();
 import { crearJWT } from "./utils/createJWT";
 
 const app = express();
-const PORT = process.env.PORT ;
-const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${PORT}`;
 
+// -------------------------------
+// PUERTO
+// -------------------------------
+const PORT = process.env.PORT || 3001;
 
+// -------------------------------
+// BACKEND_URL
+// Producción = Railway asigna dominio HTTPS 
+// Dev = localhost 
+// -------------------------------
+const BACKEND_URL =
+  process.env.NODE_ENV === "production"
+    ? ENV.BACKEND_URL
+    : `http://localhost:${PORT}`;
+
+// -------------------------------
+// CORS
+// -------------------------------
 app.use(
   cors({
-    origin: [
-   ENV.FRONTEND_URL,
-    "http://localhost:3000",
-    "http://localhost:8081",
-    "exp://*",
-  ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+    origin:
+      process.env.NODE_ENV === "production"
+        ? [
+            ENV.FRONTEND_URL,
+            "https://bloop.cool",
+            "https://www.bloop.cool",
+          ]
+        : [
+            "http://localhost:3000",
+            "http://localhost:8081",
+            ENV.FRONTEND_URL,
+          ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.set("trust proxy", 1);
 
+// -------------------------------
+// SESIONES
+// En prod: secure + sameSite none + domain .bloop.cool  
+// En dev: nada 
+// -------------------------------
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "supersecret",
@@ -61,8 +88,8 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "none",
-      domain: ".bloop.cool",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      domain: process.env.NODE_ENV === "production" ? ".bloop.cool" : undefined,
       path: "/",
     },
   })
@@ -72,7 +99,9 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Google Auth start
+// -------------------------------
+// AUTH GOOGLE
+// -------------------------------
 app.get("/auth/google", (req: Request, res: Response, next: NextFunction) => {
   try {
     const mobileRedirect = req.query.redirect as string | undefined;
@@ -80,13 +109,17 @@ app.get("/auth/google", (req: Request, res: Response, next: NextFunction) => {
       (req.session as any).mobileRedirect = mobileRedirect;
     }
 
-    passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+    passport.authenticate("google", { scope: ["profile", "email"] })(
+      req,
+      res,
+      next
+    );
   } catch (err) {
     next(err);
   }
 });
 
-// Google Callback
+// CALLBACK GOOGLE
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", {
@@ -97,47 +130,46 @@ app.get(
     const user = req.user;
     const token = crearJWT(user);
 
-    // Mobile — token en la URL
+    // Mobile: token en la URL
     if (req.query.redirect === "mobile") {
       const mobileRedirect = `${process.env.MOBILE_SCHEME}://feed?token=${token}`;
       return res.redirect(mobileRedirect);
     }
 
-    // Web - coockie
+    // WEB -> cookie
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", 
-      sameSite: "lax",
-      path: "/", 
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/",
       domain: process.env.NODE_ENV === "production" ? ".bloop.cool" : undefined,
     });
 
-    // Redirigir sin token
     return res.redirect(process.env.FRONTEND_URL + "/feed");
   }
 );
 
-
+// -------------------------------
 // SOCKET.IO
+// -------------------------------
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
   cors: {
-    origin: [
-      ENV.FRONTEND_URL,
-      "http://localhost:3000",
-      "http://localhost:8081",
-      "exp://*"
-    ],
-    credentials: true
-  }
+    origin:
+      process.env.NODE_ENV === "production"
+        ? [ENV.FRONTEND_URL, "https://bloop.cool"]
+        : ["http://localhost:3000", "http://localhost:8081"],
+    credentials: true,
+  },
 });
-// Socket.IO conexión: inicializar handlers de chat
-initChat(io);
 
+initChat(io);
 app.use(attachIO(io));
 
-// Rutas principales
+// -------------------------------
+// Rutas API
+// -------------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
@@ -153,7 +185,9 @@ app.use("/api/countries", countryRoutes);
 app.use("/api/weather", weatherRoutes);
 app.use("/api/photo", photoRoutes);
 
-// Iniciar servidor
+// -------------------------------
+// SERVER UP
+// -------------------------------
 server.listen(PORT, () =>
   console.log(`🚀 Servidor corriendo en ${BACKEND_URL}`)
 );

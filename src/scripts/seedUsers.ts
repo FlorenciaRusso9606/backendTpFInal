@@ -12,7 +12,6 @@ async function seedUsers(count = 10) {
     process.exit(1);
   }
 
-  console.log(`\n🚀 Iniciando seed: ${count} usuarios aleatorios...\n`);
 
   let inserted = 0;
   let skipped = 0;
@@ -35,7 +34,6 @@ async function seedUsers(count = 10) {
 
       const existing = await findUserByIdentifier(email);
       if (existing) {
-        console.log(`User already exists: ${username} (${email})`);
         skipped++;
         continue;
       }
@@ -72,7 +70,6 @@ async function seedUsers(count = 10) {
       try {
         await insertUser(user);
         inserted++;
-        console.log(`--> Inserted: ${username}`);
       } catch (err) {
         errors++;
         console.error(`Error inserting ${username}:`, (err as Error).message);
@@ -80,12 +77,7 @@ async function seedUsers(count = 10) {
     }
 
     // Final debugging 
-    console.log("\nSEED COMPLETED");
-    console.log("---------------------------");
-    console.log(`Inserted: ${inserted}`);
-    console.log(`Skipped: ${skipped}`);
-    console.log(`Errors: ${errors}`);
-    console.log("---------------------------\n");
+   
   } catch (err) {
     console.error("❌ Error general del seed:", err);
   } finally {

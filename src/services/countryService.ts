@@ -53,9 +53,7 @@ export async function getCapital(isoCode: string) {
 // Obtener lista de países
 export async function getCountriesList() {
   try {
-    console.log("🧼 Creando cliente SOAP...");
     const client = await getSoapClient();
-    console.log("✅ Cliente SOAP listo");
 
     const [result] = await client.ListOfCountryNamesByCodeAsync({});
 

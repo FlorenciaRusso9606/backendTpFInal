@@ -61,7 +61,6 @@ export const getUser = async (req: Request, res: Response) => {
 export const editProfile = async (req: Request, res: Response) => {
   const userId = req.params.id;
   const { displayname, bio, profile_picture_url, password, new_password, city, country_iso } = req.body;
-  console.log("REQ BODY", req.body)
   try {
     const currentUser = (req as any).user;
     if (currentUser.id !== userId && currentUser.role !== 'ADMIN') {

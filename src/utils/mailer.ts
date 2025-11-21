@@ -54,7 +54,6 @@ export async function sendStatusChangeEmail(to: string, newStatus: string) {
       html,
     });
 
-    console.log(`Email de estado "${newStatus}" enviado a ${to}`);
   } catch (err) {
     console.error("Error enviando email de cambio de estado a", to, err);
   }

@@ -5,10 +5,8 @@ import { sendStatusChangeEmail } from "../utils/mailer";
 export const toggleUserStatus = async (req: Request, res: Response) => {
     try {
         const { userId } = req.params
-        console.log("ID en adminController: ", userId)
         //buscar usuario
         const user = await findUserById(userId)
-        console.log("User en adminController: ", user)
         if (!user) return res.status(404).json({ message: "Usuario no encontrado" })
 
         const newStatus = user.status === "SUSPENDED" ? "ACTIVE" : "SUSPENDED"

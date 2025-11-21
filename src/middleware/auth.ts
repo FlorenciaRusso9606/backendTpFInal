@@ -33,7 +33,6 @@ export const authenticateJWT = async (req: Request, res: Response, next: NextFun
             return res.status(403).json({ message: "Cuenta suspendida. Contacta al administrador." });
         }
         req.user = user
-        console.log("AUTH MIDDLEWARE => TOKEN DECODED USER:", req.user);
 
         next()
     } catch (err) {

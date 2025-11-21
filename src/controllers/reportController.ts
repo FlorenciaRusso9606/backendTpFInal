@@ -38,21 +38,13 @@ export const getByStatus = async (req: Request, res: Response) => {
 
 
 export const updateStatus = async (req: Request, res: Response) => {
-  console.log("🪵 PATCH /reports/:id");
-  console.log("Params:", req.params);
-  console.log("Body:", req.body);
-  console.log("User:", req.user);
+ 
   try {
-    console.log("Body: ", req.body)
-    console.log("Params: ", req.params)
     const { action } = req.body;
-    console.log("STATUS", action)
     const { id } = req.params;
     const { target_id } = req.body
-    console.log("Target Id", target_id)
     if (!action) {
       return res.status(400).json({ message: "Falta el campo 'status'" });
-      console.log("entró aqui")
     }
 
     if (action === 'blocked') {

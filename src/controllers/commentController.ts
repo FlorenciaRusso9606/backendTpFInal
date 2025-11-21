@@ -60,7 +60,6 @@ export const insertComment = async (req: Request, res: Response) => {
 
     const newComment = await insertCommentDB(author_id, post_id, text, parent_id);
 
-console.log("📢 Emisión de evento:", `new-comment-${post_id}`);
 req.io?.emit(`new-comment-${post_id}`, newComment);
 
     res.status(201).json(newComment);
@@ -138,7 +137,6 @@ export const getCommentsByPost = async (req: Request, res: Response) => {
 
 export const myComments = async (req: Request, res: Response)=>{
   const  user_id = (req as any).user.id
-  console.log("myComments => user_id:", user_id);
   try{
     const comments = await getMyComments( user_id)
     res.status(200).json(comments)

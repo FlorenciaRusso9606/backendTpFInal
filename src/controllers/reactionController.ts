@@ -21,7 +21,6 @@ export const toggleCommentLike = async (req: Request, res: Response) =>{
     try{
         const user_id = (req as any).user?.id;
     const {commentId} =req.params;
-          console.log("togglePostLike:", { user_id, commentId });
     if(!user_id || !commentId){
          return res.status(400).json({ message: "Faltan datos (user_id o comment_id)" });
     }
