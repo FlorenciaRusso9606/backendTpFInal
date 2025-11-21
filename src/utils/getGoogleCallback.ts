@@ -1,8 +1,9 @@
 export function getGoogleCallback() {
-  const env = process.env.NODE_ENV;
-  const backendBase = process.env.BACKEND_URL; // siempre la base
+  const backendBase = process.env.BACKEND_URL;
 
-  if (!backendBase) throw new Error("BACKEND_URL faltante");
+  if (!backendBase) {
+    throw new Error("Falta BACKEND_URL en las variables de entorno");
+  }
 
-  return `${backendBase}/auth/google/callback`;
+  return `${backendBase.replace(/\/$/, "")}/auth/google/callback`;
 }

@@ -5,6 +5,7 @@ import {
   deleteCommentDB,
   findCommentDB,
   getCommentsByPostDB,
+  getMyComments,
 } from "../models/commentModels";
 import { Request, Response } from "express";
 
@@ -134,3 +135,14 @@ export const getCommentsByPost = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error interno del servidor" });
   }
 };
+
+export const myComments = async (req: Request, res: Response)=>{
+  const  user_id = (req as any).user.id
+  console.log("myComments => user_id:", user_id);
+  try{
+    const comments = await getMyComments( user_id)
+    res.status(200).json(comments)
+  }catch(err){
+    res.status(500).json({message: "Error en el servidor al traer los comentarios"})
+  }
+}
