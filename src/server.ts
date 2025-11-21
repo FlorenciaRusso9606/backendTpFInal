@@ -95,16 +95,26 @@ app.get(
     const user = req.user;
     const token = crearJWT(user);
 
-    const mobileRedirect = `${process.env.MOBILE_SCHEME}://auth?token=${token}`;
-    const webRedirect = `${process.env.FRONTEND_URL}/auth/success?token=${token}`;
-
+    // Mobile — token en la URL
     if (req.query.redirect === "mobile") {
+      const mobileRedirect = `${process.env.MOBILE_SCHEME}://feed?token=${token}`;
       return res.redirect(mobileRedirect);
     }
 
-    return res.redirect(webRedirect);
+    // Web - coockie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", 
+      sameSite: "lax",
+      path: "/", 
+      domain: process.env.NODE_ENV === "production" ? ".bloop.cool" : undefined,
+    });
+
+    // Redirigir sin token
+    return res.redirect(process.env.FRONTEND_URL + "/feed");
   }
 );
+
 
 // SOCKET.IO
 const server = http.createServer(app);

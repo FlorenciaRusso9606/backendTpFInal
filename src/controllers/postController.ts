@@ -1,5 +1,5 @@
 import { Request, Response } from "express"
-import { createMedia, createPost, getPosts, getPostsByAuthor, getPostById, blockPostById, sharePost, hasUserSharedPost } from "../models/postModel"
+import { createMedia, createPost, getPosts, getPostsByAuthor, getPostById, blockPostById, sharePost, hasUserSharedPost, getMyRepostsDB } from "../models/postModel"
 import { uploadBufferToCloudinary, deleteFromCloudinary } from "../utils/cloudinary"
 import db from '../db'
 
@@ -313,3 +313,13 @@ export const isSharedPostController = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error al verificar si el post fue compartido" });
   }
 };
+
+export const getMyRepost = async (req: Request, res: Response) =>{
+  const user_id = (req as any).user.id
+  try{
+    const postRepost = await getMyRepostsDB(user_id)
+    res.status(200).json(postRepost)
+  }catch(err){
+    res.status(500).json({message: "Error en el servidor al traer los post reposteados"})
+  }
+}
