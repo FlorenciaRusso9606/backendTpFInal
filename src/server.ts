@@ -26,6 +26,7 @@ import weatherRoutes from "./routes/weatherRoutes";
 import photoRoutes from "./routes/photoRoutes";
 import "express-session";
 import { ENV } from "./config/env";
+import initChat from "./sockets/chat";
 dotenv.config();
 import { crearJWT } from "./utils/createJWT";
 
@@ -131,6 +132,8 @@ const io = new SocketIOServer(server, {
     credentials: true
   }
 });
+// Socket.IO conexión: inicializar handlers de chat
+initChat(io);
 
 app.use(attachIO(io));
 
@@ -149,14 +152,6 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/countries", countryRoutes);
 app.use("/api/weather", weatherRoutes);
 app.use("/api/photo", photoRoutes);
-
-// Socket.IO conexión
-io.on("connection", (socket: any) => {
-  console.log("✅ Cliente conectado:", socket.id);
-  socket.on("disconnect", (reason: any) => {
-    console.log("❌ Cliente desconectado:", socket.id, "Motivo:", reason);
-  });
-});
 
 // Iniciar servidor
 server.listen(PORT, () =>

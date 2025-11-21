@@ -10,6 +10,10 @@ router.use(authenticateJWT);
 router.get("/conversations", MessageController.getConversations);
 
 // Obtener mensajes con un usuario concreto
+// Soporta dos formatos usados por diferentes clientes:
+// - GET /api/messages/:userId
+// - GET /api/messages/with/:userId
+router.get("/:userId", MessageController.getMessagesWithUser);
 router.get("/with/:userId", MessageController.getMessagesWithUser);
 
 // Crear mensaje (body: { to, text })
