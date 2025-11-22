@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
@@ -6,7 +7,6 @@ const cookieParser = require("cookie-parser");
 const session = require("express-session");
 
 import type { Request, Response, NextFunction } from "express";
-import dotenv from "dotenv";
 
 import translationRoutes from "./routes/translationRoutes";
 import authRoutes from "./routes/authRoutes";
@@ -27,7 +27,6 @@ import photoRoutes from "./routes/photoRoutes";
 import "express-session";
 import { ENV } from "./config/env";
 import initChat from "./sockets/chat";
-dotenv.config();
 import { crearJWT } from "./utils/createJWT";
 
 const app = express();
@@ -173,6 +172,8 @@ app.use(attachIO(io));
 // Rutas API
 // -------------------------------
 app.use("/api/auth", authRoutes);
+// Alias for legacy/frontend calls that target `/auth` instead of `/api/auth`
+app.use("/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/blocks", blockRoutes);

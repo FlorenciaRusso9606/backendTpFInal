@@ -4,14 +4,33 @@ import * as nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: Number(process.env.EMAIL_PORT) || 587,
-  secure: process.env.EMAIL_SECURE === "true", // true para 465
+  secure: process.env.EMAIL_SECURE === "true",
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  connectionTimeout: Number(process.env.EMAIL_TIMEOUT_MS) || 10000,
+  greetingTimeout: Number(process.env.EMAIL_TIMEOUT_MS) || 10000,
+  socketTimeout: Number(process.env.EMAIL_TIMEOUT_MS) || 10000,
 });
 
-export async function sendVerificationEmail(to: string, token: string) {
+
+async function sendMailWithTimeout(mailOptions: nodemailer.SendMailOptions) {
+  const timeoutMs = Number(process.env.EMAIL_TIMEOUT_MS) || 10000;
+  const sendPromise = transporter.sendMail(mailOptions);
+
+  return Promise.race([
+    sendPromise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Mail send timeout")), timeoutMs)
+    ),
+  ]);
+}
+
+export async function sendVerificationEmail(
+  to: string,
+  token: string
+): Promise<boolean> {
   const url = `${process.env.FRONTEND_URL}/verify?token=${token}`;
   const html = `
     <p>Bienvenido a La Red!</p>
@@ -21,17 +40,24 @@ export async function sendVerificationEmail(to: string, token: string) {
   `;
 
   try {
-    await transporter.sendMail({
+    await sendMailWithTimeout({
       from: process.env.EMAIL_FROM,
       to,
       subject: "Verifica tu cuenta en La Red",
       html,
     });
+    console.log("Verification email sent to", to);
+    return true;
   } catch (err) {
     console.error("Error enviando email a", to, err);
+    return false;
   }
 }
-export async function sendStatusChangeEmail(to: string, newStatus: string) {
+
+export async function sendStatusChangeEmail(
+  to: string,
+  newStatus: string
+): Promise<boolean> {
   const statusText =
     newStatus === "SUSPENDED"
       ? "Tu cuenta ha sido suspendida temporalmente."
@@ -44,7 +70,7 @@ export async function sendStatusChangeEmail(to: string, newStatus: string) {
   `;
 
   try {
-    await transporter.sendMail({
+    await sendMailWithTimeout({
       from: process.env.EMAIL_FROM,
       to,
       subject:
@@ -53,8 +79,10 @@ export async function sendStatusChangeEmail(to: string, newStatus: string) {
           : "Tu cuenta ha sido reactivada",
       html,
     });
-
+    console.log("Status change email sent to", to);
+    return true;
   } catch (err) {
     console.error("Error enviando email de cambio de estado a", to, err);
+    return false;
   }
 }
