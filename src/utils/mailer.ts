@@ -61,12 +61,13 @@ export async function sendVerificationEmail(
 
   try {
     if (useResend && resendClient) {
-      await resendClient.emails.send({
+      const resp = await resendClient.emails.send({
         from: process.env.EMAIL_FROM,
         to,
         subject: "Verifica tu cuenta en La Red",
         html,
       });
+      console.log("Resend response:", resp);
       console.log("Verification email sent via Resend to", to);
       return true;
     }
@@ -102,7 +103,7 @@ export async function sendStatusChangeEmail(
 
   try {
     if (useResend && resendClient) {
-      await resendClient.emails.send({
+      const resp = await resendClient.emails.send({
         from: process.env.EMAIL_FROM,
         to,
         subject:
@@ -111,6 +112,7 @@ export async function sendStatusChangeEmail(
             : "Tu cuenta ha sido reactivada",
         html,
       });
+      console.log("Resend response:", resp);
       console.log("Status change email sent via Resend to", to);
       return true;
     }
