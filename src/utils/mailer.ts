@@ -1,6 +1,22 @@
 
 
 import * as nodemailer from "nodemailer";
+// Prefer Resend (API) if configured; otherwise use SMTP via nodemailer
+let useResend = false;
+let resendClient: any = null;
+if (process.env.RESEND_API_KEY) {
+  try {
+    // import dynamically to avoid runtime errors when dependency not installed locally
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { Resend } = require("resend");
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+    useResend = true;
+  } catch (err) {
+    console.warn("Resend client not available, falling back to SMTP", err);
+    useResend = false;
+  }
+}
+
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: Number(process.env.EMAIL_PORT) || 587,
@@ -13,6 +29,10 @@ const transporter = nodemailer.createTransport({
   greetingTimeout: Number(process.env.EMAIL_TIMEOUT_MS) || 10000,
   socketTimeout: Number(process.env.EMAIL_TIMEOUT_MS) || 10000,
 });
+
+console.log(
+  `[mailer] provider=${useResend ? "RESEND" : "SMTP"} host=${process.env.EMAIL_HOST} port=${process.env.EMAIL_PORT} secure=${process.env.EMAIL_SECURE}`
+);
 
 
 async function sendMailWithTimeout(mailOptions: nodemailer.SendMailOptions) {
@@ -40,6 +60,17 @@ export async function sendVerificationEmail(
   `;
 
   try {
+    if (useResend && resendClient) {
+      await resendClient.emails.send({
+        from: process.env.EMAIL_FROM,
+        to,
+        subject: "Verifica tu cuenta en La Red",
+        html,
+      });
+      console.log("Verification email sent via Resend to", to);
+      return true;
+    }
+
     await sendMailWithTimeout({
       from: process.env.EMAIL_FROM,
       to,
@@ -70,6 +101,20 @@ export async function sendStatusChangeEmail(
   `;
 
   try {
+    if (useResend && resendClient) {
+      await resendClient.emails.send({
+        from: process.env.EMAIL_FROM,
+        to,
+        subject:
+          newStatus === "SUSPENDED"
+            ? "Tu cuenta ha sido suspendida"
+            : "Tu cuenta ha sido reactivada",
+        html,
+      });
+      console.log("Status change email sent via Resend to", to);
+      return true;
+    }
+
     await sendMailWithTimeout({
       from: process.env.EMAIL_FROM,
       to,
