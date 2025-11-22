@@ -84,12 +84,16 @@ export async function sendVerificationEmail(
   try {
     if (useResend && resendClient) {
       const resp = await resendClient.emails.send({
-        from: process.env.EMAIL_FROM,
+        from: FROM,
         to,
         subject: "Verifica tu cuenta en La Red",
         html,
       });
       console.log("Resend response:", resp);
+      if (resp && resp.error) {
+        console.error("Resend error sending verification email to", to, resp.error);
+        return false;
+      }
       console.log("Verification email sent via Resend to", to);
       return true;
     }
@@ -126,7 +130,7 @@ export async function sendStatusChangeEmail(
   try {
     if (useResend && resendClient) {
       const resp = await resendClient.emails.send({
-        from: process.env.EMAIL_FROM,
+        from: FROM,
         to,
         subject:
           newStatus === "SUSPENDED"
@@ -135,6 +139,10 @@ export async function sendStatusChangeEmail(
         html,
       });
       console.log("Resend response:", resp);
+      if (resp && resp.error) {
+        console.error("Resend error sending status-change email to", to, resp.error);
+        return false;
+      }
       console.log("Status change email sent via Resend to", to);
       return true;
     }
