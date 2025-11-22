@@ -34,6 +34,28 @@ console.log(
   `[mailer] provider=${useResend ? "RESEND" : "SMTP"} host=${process.env.EMAIL_HOST} port=${process.env.EMAIL_PORT} secure=${process.env.EMAIL_SECURE}`
 );
 
+function normalizeFrom(fromRaw?: string) {
+  if (!fromRaw) return undefined;
+  const from = fromRaw.trim();
+  // If already in `Name <email@domain>` format, return as-is
+  if (/^.+<.+@.+>$/i.test(from)) return from;
+  // If it's just an email, return it
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(from)) return from;
+  // Try to extract email part and display name
+  const emailMatch = from.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+  if (emailMatch) {
+    const email = emailMatch[0];
+    const display = from.replace(email, "").replace(/["<>]/g, "").trim();
+    if (display) return `${display} <${email}>`;
+    return email;
+  }
+  // Fallback to raw
+  return from;
+}
+
+const FROM = normalizeFrom(process.env.EMAIL_FROM);
+console.log(`[mailer] using FROM='${FROM}'`);
+
 
 async function sendMailWithTimeout(mailOptions: nodemailer.SendMailOptions) {
   const timeoutMs = Number(process.env.EMAIL_TIMEOUT_MS) || 10000;
