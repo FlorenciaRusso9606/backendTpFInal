@@ -24,6 +24,7 @@ import passport from "./config/passport";
 import countryRoutes from "./routes/countryRoutes";
 import weatherRoutes from "./routes/weatherRoutes";
 import photoRoutes from "./routes/photoRoutes";
+import debugRoutes from "./routes/debugRoutes";
 import "express-session";
 import { ENV } from "./config/env";
 import initChat from "./sockets/chat";
@@ -187,6 +188,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/countries", countryRoutes);
 app.use("/api/weather", weatherRoutes);
 app.use("/api/photo", photoRoutes);
+app.use("/api/debug", debugRoutes);
 
 // -------------------------------
 // SERVER UP

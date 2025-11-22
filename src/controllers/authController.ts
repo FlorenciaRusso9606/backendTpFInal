@@ -42,7 +42,9 @@ export const registerUser = async (req: Request, res: Response) => {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await AuthModel.createEmailVerification(newUser.id, token, expiresAt);
 
+    console.log("Attempting to send verification email to:", newUser.email);
     const mailSent = await sendVerificationEmail(newUser.email, token);
+    console.log("sendVerificationEmail returned:", mailSent);
     if (!mailSent) {
       console.warn("No se pudo enviar el email de verificación para user:", newUser.id);
     }
