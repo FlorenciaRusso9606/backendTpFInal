@@ -82,19 +82,22 @@ app.set("trust proxy", 1);
 // En prod: secure + sameSite none + domain .bloop.cool  
 // En dev: nada 
 // -------------------------------
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === "production" ? ".bloop.cool" : undefined);
+const sessionCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  domain: COOKIE_DOMAIN,
+  path: "/",
+};
+console.log("Session cookie options:", sessionCookieOptions);
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "supersecret",
     resave: false,
     saveUninitialized: false,
-    proxy: true, 
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      domain: process.env.NODE_ENV === "production" ? ".bloop.cool" : undefined,
-      path: "/",
-    },
+    proxy: true,
+    cookie: sessionCookieOptions,
   })
 );
 
