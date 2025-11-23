@@ -1,7 +1,8 @@
 import { Request, Response } from "express"
-import { createMedia, createPost, getPosts, getPostsByAuthor, getPostById, blockPostById, sharePost, hasUserSharedPost, getMyRepostsDB } from "../models/postModel"
+import { createMedia, createPost, getPosts, getPostsByAuthor, getPostById, blockPostById, sharePost, hasUserSharedPost, getMyRepostsDB, getPostsByUserId} from "../models/postModel"
 import { uploadBufferToCloudinary, deleteFromCloudinary } from "../utils/cloudinary"
 import db from '../db'
+import * as AuthModel from "../models/authModel";
 
 const multer = require("multer")
 
@@ -323,3 +324,25 @@ export const getMyRepost = async (req: Request, res: Response) =>{
     res.status(500).json({message: "Error en el servidor al traer los post reposteados"})
   }
 }
+
+
+export const listUserPostsController = async (req: Request, res: Response) => {
+  try {
+    const { username } = req.params;
+
+    // Buscar usuario por username
+    const user = await AuthModel.findUserByIdentifier(username);
+    if (!user) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    //  Obtener sus posts (AJUSTA el nombre según tu modelo)
+    const posts = await getPostsByUserId(user.id);
+
+    return res.json({ data: posts });
+  } catch (err) {
+    console.error("listUserPostsController error:", err);
+    res.status(500).json({ error: "Error obteniendo posts del usuario" });
+  }
+};
+

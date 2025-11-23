@@ -347,3 +347,11 @@ export const getMyRepostsDB = async (user_id: string) => {
     `, [user_id]);
     return result.rows;
 };
+
+export const getPostsByUserId = async (user_id: string) => {
+  const result = await db.query(
+  "SELECT * FROM posts WHERE author_id = ? ORDER BY created_at DESC",
+  [user_id]
+);
+    return result.rows;
+};
