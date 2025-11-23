@@ -88,14 +88,26 @@ export const loginUser = async (req: Request, res: Response) => {
     );
 
     // Cookie segura según entorno
-    res.cookie("token", token, {
+    const cookieDomain = process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === "production" ? ".bloop.cool" : undefined);
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-      domain: process.env.NODE_ENV === "production" ? ".bloop.cool" : undefined,
+      domain: cookieDomain,
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000,
+    } as any;
+
+    // Log cookie options (do not log token value)
+    console.log("Setting auth cookie with options:", {
+      httpOnly: cookieOptions.httpOnly,
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite,
+      domain: cookieOptions.domain,
+      path: cookieOptions.path,
     });
+
+    res.cookie("token", token, cookieOptions);
 
     const { password_hash, ...safeUser } = user;
 

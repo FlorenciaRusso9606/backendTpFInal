@@ -140,13 +140,23 @@ app.get(
     }
 
     // WEB -> cookie
-    res.cookie("token", token, {
+    const cookieDomain = process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === "production" ? ".bloop.cool" : undefined);
+    const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       path: "/",
-      domain: process.env.NODE_ENV === "production" ? ".bloop.cool" : undefined,
+      domain: cookieDomain,
+    } as any;
+    console.log("Setting auth cookie (google callback) with options:", {
+      httpOnly: cookieOptions.httpOnly,
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite,
+      domain: cookieOptions.domain,
+      path: cookieOptions.path,
     });
+
+    res.cookie("token", token, cookieOptions);
 
     return res.redirect(process.env.FRONTEND_URL + "/feed");
   }
