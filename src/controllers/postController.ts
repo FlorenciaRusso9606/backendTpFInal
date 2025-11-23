@@ -336,9 +336,8 @@ export const listUserPostsController = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
 
-    //  Obtener sus posts (AJUSTA el nombre según tu modelo)
+    //  Obtener sus posts 
     const posts = await getPostsByUserId(user.id);
-
     return res.json({ data: posts });
   } catch (err) {
     console.error("listUserPostsController error:", err);

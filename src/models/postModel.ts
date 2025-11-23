@@ -349,9 +349,71 @@ export const getMyRepostsDB = async (user_id: string) => {
 };
 
 export const getPostsByUserId = async (user_id: string) => {
-  const result = await db.query(
-  "SELECT * FROM posts WHERE author_id = ? ORDER BY created_at DESC",
-  [user_id]
-);
-    return result.rows;
+  // POSTS + AUTHOR
+  const postsResult = await db.query(
+    `SELECT 
+        p.id,
+        p.text,
+        p.link_url,
+        p.created_at,
+        p.weather,
+        p.shared_post_id,
+
+        u.id AS author_id,
+        u.username AS author_username,
+        u.displayname AS author_displayname,
+        u.profile_picture_url AS author_profile_picture_url
+
+      FROM post p
+      INNER JOIN users u ON p.author_id = u.id
+      WHERE p.author_id = $1
+      ORDER BY p.created_at DESC`,
+    [user_id]
+  );
+
+  const postIds = postsResult.rows.map(r => r.id);
+
+  //  MEDIAS
+  let mediasByPost: Record<string, any[]> = {};
+
+  if (postIds.length > 0) {
+    const mediasResult = await db.query(
+      `SELECT 
+          id,
+          post_id,
+          url,
+          type
+       FROM media
+       WHERE post_id = ANY($1)`,
+      [postIds]
+    );
+
+    mediasResult.rows.forEach(m => {
+      if (!mediasByPost[m.post_id]) mediasByPost[m.post_id] = [];
+      mediasByPost[m.post_id].push({
+        id: m.id,
+        url: m.url,
+        type: m.type,
+      });
+    });
+  }
+
+  // RESPUESTA FINAL
+  return postsResult.rows.map(row => ({
+    id: row.id,
+    text: row.text,
+    link_url: row.link_url,
+    created_at: row.created_at,
+    weather: row.weather ? JSON.parse(row.weather) : null,
+
+    author: {
+      id: row.author_id,
+      username: row.author_username,
+      displayname: row.author_displayname,
+      profile_picture_url: row.author_profile_picture_url,
+    },
+
+    medias: mediasByPost[row.id] || [],
+    shared_post: null,
+  }));
 };
