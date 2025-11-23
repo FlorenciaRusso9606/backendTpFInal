@@ -42,16 +42,20 @@ export const registerUser = async (req: Request, res: Response) => {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await AuthModel.createEmailVerification(newUser.id, token, expiresAt);
 
-    try {
-      await sendVerificationEmail(newUser.email, token);
-    } catch (mailErr) {
-      console.error("Error enviando email:", mailErr);
+    console.log("Attempting to send verification email to:", newUser.email);
+    const mailSent = await sendVerificationEmail(newUser.email, token);
+    console.log("sendVerificationEmail returned:", mailSent);
+    if (!mailSent) {
+      console.warn("No se pudo enviar el email de verificación para user:", newUser.id);
     }
 
     const { password_hash, ...safeUser } = newUser;
     res.status(201).json({
       user: safeUser,
-      message: "Registro exitoso 🎉 Revisa tu correo para activar la cuenta",
+      message: mailSent
+        ? "Registro exitoso 🎉 Revisa tu correo para activar la cuenta"
+        : "Registro exitoso, pero no pudimos enviar el email de verificación. Contactá soporte.",
+      mailSent,
     });
   } catch (err) {
     console.error("Error al registrar usuario:", err);
@@ -133,6 +137,12 @@ export const verifyUser = async (req: Request, res: Response) => {
 
     await AuthModel.activateUser(verification.user_id);
     await AuthModel.markVerificationUsed(verification.id);
+
+    const wantsHtml = req.headers.accept?.includes("text/html");
+    if (wantsHtml) {
+      const frontend = process.env.FRONTEND_URL || "http://localhost:3000";
+      return res.redirect(`${frontend}/login?verified=true`);
+    }
 
     return res.json({ success: true, message: "Cuenta activada" });
   } catch (err) {

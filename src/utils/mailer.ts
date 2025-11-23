@@ -1,17 +1,78 @@
 
 
 import * as nodemailer from "nodemailer";
+// Prefer Resend (API) if configured; otherwise use SMTP via nodemailer
+let useResend = false;
+let resendClient: any = null;
+if (process.env.RESEND_API_KEY) {
+  try {
+    // import dynamically to avoid runtime errors when dependency not installed locally
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { Resend } = require("resend");
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+    useResend = true;
+  } catch (err) {
+    console.warn("Resend client not available, falling back to SMTP", err);
+    useResend = false;
+  }
+}
+
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: Number(process.env.EMAIL_PORT) || 587,
-  secure: process.env.EMAIL_SECURE === "true", // true para 465
+  secure: process.env.EMAIL_SECURE === "true",
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  connectionTimeout: Number(process.env.EMAIL_TIMEOUT_MS) || 10000,
+  greetingTimeout: Number(process.env.EMAIL_TIMEOUT_MS) || 10000,
+  socketTimeout: Number(process.env.EMAIL_TIMEOUT_MS) || 10000,
 });
 
-export async function sendVerificationEmail(to: string, token: string) {
+console.log(
+  `[mailer] provider=${useResend ? "RESEND" : "SMTP"} host=${process.env.EMAIL_HOST} port=${process.env.EMAIL_PORT} secure=${process.env.EMAIL_SECURE}`
+);
+
+function normalizeFrom(fromRaw?: string) {
+  if (!fromRaw) return undefined;
+  const from = fromRaw.trim();
+  // If already in `Name <email@domain>` format, return as-is
+  if (/^.+<.+@.+>$/i.test(from)) return from;
+  // If it's just an email, return it
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(from)) return from;
+  // Try to extract email part and display name
+  const emailMatch = from.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+  if (emailMatch) {
+    const email = emailMatch[0];
+    const display = from.replace(email, "").replace(/["<>]/g, "").trim();
+    if (display) return `${display} <${email}>`;
+    return email;
+  }
+  // Fallback to raw
+  return from;
+}
+
+const FROM = normalizeFrom(process.env.EMAIL_FROM);
+console.log(`[mailer] using FROM='${FROM}'`);
+
+
+async function sendMailWithTimeout(mailOptions: nodemailer.SendMailOptions) {
+  const timeoutMs = Number(process.env.EMAIL_TIMEOUT_MS) || 10000;
+  const sendPromise = transporter.sendMail(mailOptions);
+
+  return Promise.race([
+    sendPromise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Mail send timeout")), timeoutMs)
+    ),
+  ]);
+}
+
+export async function sendVerificationEmail(
+  to: string,
+  token: string
+): Promise<boolean> {
   const url = `${process.env.FRONTEND_URL}/verify?token=${token}`;
   const html = `
     <p>Bienvenido a La Red!</p>
@@ -21,17 +82,40 @@ export async function sendVerificationEmail(to: string, token: string) {
   `;
 
   try {
-    await transporter.sendMail({
+    if (useResend && resendClient) {
+      const resp = await resendClient.emails.send({
+        from: FROM,
+        to,
+        subject: "Verifica tu cuenta en La Red",
+        html,
+      });
+      console.log("Resend response:", resp);
+      if (resp && resp.error) {
+        console.error("Resend error sending verification email to", to, resp.error);
+        return false;
+      }
+      console.log("Verification email sent via Resend to", to);
+      return true;
+    }
+
+    await sendMailWithTimeout({
       from: process.env.EMAIL_FROM,
       to,
       subject: "Verifica tu cuenta en La Red",
       html,
     });
+    console.log("Verification email sent to", to);
+    return true;
   } catch (err) {
     console.error("Error enviando email a", to, err);
+    return false;
   }
 }
-export async function sendStatusChangeEmail(to: string, newStatus: string) {
+
+export async function sendStatusChangeEmail(
+  to: string,
+  newStatus: string
+): Promise<boolean> {
   const statusText =
     newStatus === "SUSPENDED"
       ? "Tu cuenta ha sido suspendida temporalmente."
@@ -44,7 +128,26 @@ export async function sendStatusChangeEmail(to: string, newStatus: string) {
   `;
 
   try {
-    await transporter.sendMail({
+    if (useResend && resendClient) {
+      const resp = await resendClient.emails.send({
+        from: FROM,
+        to,
+        subject:
+          newStatus === "SUSPENDED"
+            ? "Tu cuenta ha sido suspendida"
+            : "Tu cuenta ha sido reactivada",
+        html,
+      });
+      console.log("Resend response:", resp);
+      if (resp && resp.error) {
+        console.error("Resend error sending status-change email to", to, resp.error);
+        return false;
+      }
+      console.log("Status change email sent via Resend to", to);
+      return true;
+    }
+
+    await sendMailWithTimeout({
       from: process.env.EMAIL_FROM,
       to,
       subject:
@@ -53,8 +156,10 @@ export async function sendStatusChangeEmail(to: string, newStatus: string) {
           : "Tu cuenta ha sido reactivada",
       html,
     });
-
+    console.log("Status change email sent to", to);
+    return true;
   } catch (err) {
     console.error("Error enviando email de cambio de estado a", to, err);
+    return false;
   }
 }
