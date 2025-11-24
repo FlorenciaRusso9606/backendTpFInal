@@ -12,6 +12,7 @@ dotenv.config();
 // Verificación de variables de entorno
 const clientID = process.env.GOOGLE_CLIENT_ID;
 const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleCallBackURL = process.env.GOOGLE_CALLBACK_URL
 if (!clientID || !clientSecret) {
   throw new Error("Faltan las variables de entorno de Google OAuth");
 }
@@ -21,7 +22,7 @@ passport.use(
     {
       clientID,
       clientSecret,
-      callbackURL: getGoogleCallback(),
+      callbackURL: googleCallBackURL,
     },
     async (_accessToken: string, _refreshToken: string, profile: Profile, done: VerifyCallback) => {
    
