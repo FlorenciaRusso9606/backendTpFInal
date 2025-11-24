@@ -42,6 +42,9 @@ export const createPostController = [
   upload.array("files", 4),
   async (req: Request, res: Response) => {
     try {
+      console.log("REQ FILES:", req.files);
+console.log("REQ BODY:", req.body);
+
       const authorId = (req as any).user?.id
       if (!authorId) return res.status(401).json({ error: "No autenticado" })
 

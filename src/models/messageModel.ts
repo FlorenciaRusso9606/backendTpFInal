@@ -68,7 +68,17 @@ export const getConversationsForUser = async (userId: string) => {
   );
 
   return result.rows.map((r: any) => ({
-    otherUser: { id: r.other_user_id, username: r.username, displayname: r.displayname, profile_picture_url: r.profile_picture_url },
-    lastMessage: { text: r.text, from: r.sender_id, created_at: r.created_at }
+    id: r.conversation_id, 
+    otherUser: {
+      id: r.other_user_id,
+      username: r.username,
+      displayname: r.displayname,
+      profile_picture_url: r.profile_picture_url,
+    },
+    lastMessage: {
+      text: r.text,
+      from: r.sender_id,
+      created_at: r.created_at,
+    },
   }));
 };

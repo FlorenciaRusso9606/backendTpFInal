@@ -2,21 +2,25 @@ import { Request, Response } from "express";
 import axios from "axios"
 import { getFullCountryInfo, getCapital , getCountryFlag, getCountriesList} from "../services/countryService"; 
 
-const BASE_URL = "https://countriesnow.space/api/v0.1";
+const BASE_URL = "https://countriesapi.io/api";
 
-export const getCitiesByCountry = async (req:Request, res: Response) => {
-  const { iso } = req.params;
+export const getCitiesByCountry = async (req: Request, res: Response) => {
+  const iso = req.params.iso.toUpperCase();
+
   try {
-    const all = await axios.get(`${BASE_URL}/countries`);
-    const match = all.data.data.find((c: any) => c.iso2 === iso.toUpperCase());
-    if (!match) return res.status(404).json({ error: "País no encontrado" });
+    const { data } = await axios.get(`${BASE_URL}/cities?country_code=${iso}`);
 
-    res.json(match.cities.map((city: string) => ({ name: city })));
-  } catch (error: any) {
-    console.error("Error al obtener ciudades:", error.message);
+    if (!data?.cities) {
+      return res.status(404).json({ error: "No se encontraron ciudades" });
+    }
+
+    res.json(data.cities.map((c: string) => ({ name: c })));
+  } catch (err: any) {
+    console.error("Error al obtener ciudades:", err.response?.data || err.message);
     res.status(500).json({ error: "Error al obtener ciudades" });
   }
 };
+
 export const getFullCountry = async (req: Request, res: Response) => 
   { try { const iso = (req.params.iso || "").toUpperCase(); if (!iso || iso.length !== 2) 
     return res.status(400).json({ error: "El ISO requiere 2 letras" }); 
