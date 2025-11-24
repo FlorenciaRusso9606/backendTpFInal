@@ -34,3 +34,27 @@ export const showEnv = (req: Request, res: Response) => {
     return res.status(500).json({ ok: false, error: String(err) });
   }
 };
+
+export const fetchUrl = async (req: Request, res: Response) => {
+  try {
+    const url = String(req.query.url || req.body?.url || "");
+    if (!url) return res.status(400).json({ ok: false, error: "Missing 'url' param or body" });
+
+    console.log(`[debug] fetchUrl -> attempting to fetch: ${url}`);
+    // Use global fetch (Node 18+) if available
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    let resp;
+    try {
+      resp = await fetch(url, { method: "GET", signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const text = await resp.text().catch(() => "<no-text>");
+    return res.json({ ok: true, status: resp.status, headers: Object.fromEntries(resp.headers), bodyPreview: text.slice(0, 200) });
+  } catch (err: any) {
+    console.error("[debug] fetchUrl error:", err && err.stack ? err.stack : err);
+    return res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+};
