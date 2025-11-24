@@ -43,7 +43,11 @@ const parent = map.get(String(c.parent_id));
 
 export const insertComment = async (req: Request, res: Response) => {
   try {
-    const { author_id, post_id, text, parent_id } = req.body;
+    // Prefer authenticated user id as author, fall back to body for flexibility
+    const author_id = (req as any).user?.id || req.body.author_id;
+    // Allow post_id in body or as URL param /post/:postId
+    const post_id = req.body.post_id || req.params.postId;
+    const { text, parent_id } = req.body;
 
     if (!text?.trim()) {
       return res.status(400).json({ message: "El texto no puede estar vacío" });
@@ -56,6 +60,10 @@ export const insertComment = async (req: Request, res: Response) => {
       return res.status(400).json({
         message: "Se alcanzó la profundidad máxima de comentarios",
       });
+    }
+
+    if (!post_id) {
+      return res.status(400).json({ message: "post_id faltante" });
     }
 
     const newComment = await insertCommentDB(author_id, post_id, text, parent_id);
