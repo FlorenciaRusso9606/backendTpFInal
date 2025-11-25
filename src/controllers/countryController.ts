@@ -1,24 +1,31 @@
 import { Request, Response } from "express"; 
-import axios from "axios"
 import { getFullCountryInfo, getCapital , getCountryFlag, getCountriesList} from "../services/countryService"; 
+const citiesData = require("../data/cities.json");
+import { isoToNameMap } from "../utils/isoMap";
 
-const BASE_URL = "https://countriesapi.io/api";
+interface Country {
+  name: string;
+  cities: string[];
+}
 
-export const getCitiesByCountry = async (req: Request, res: Response) => {
-  const iso = req.params.iso.toUpperCase();
-
-  try {
-    const { data } = await axios.get(`${BASE_URL}/cities?country_code=${iso}`);
-
-    if (!data?.cities) {
-      return res.status(404).json({ error: "No se encontraron ciudades" });
-    }
-
-    res.json(data.cities.map((c: string) => ({ name: c })));
-  } catch (err: any) {
-    console.error("Error al obtener ciudades:", err.response?.data || err.message);
-    res.status(500).json({ error: "Error al obtener ciudades" });
+export const getCitiesByCountry = (req: Request, res: Response) => {
+  const iso = (req.params.iso || "").toUpperCase();
+  const countryName = isoToNameMap[iso];
+  if (!countryName) {
+    return res.status(404).json({ error: "ISO no reconocido" });
   }
+
+  const country: Country | undefined = citiesData.find(
+    (c: Country) => c.name === countryName
+  );
+
+  if (!country) {
+    return res.status(404).json({ error: "No se encontraron ciudades para este país" });
+  }
+
+  const cities = country.cities.map((city: string) => ({ name: city }));
+
+  res.json(cities);
 };
 
 export const getFullCountry = async (req: Request, res: Response) => 
