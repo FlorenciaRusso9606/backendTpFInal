@@ -45,6 +45,8 @@ export const getFullCountry = async (req: Request, res: Response) =>
     export const getCountryFlagController = async (req: Request, res: Response) => { 
       try { const flag = await getCountryFlag(req.params.iso); 
         res.json({ iso: req.params.iso.toUpperCase(), flag }); 
+            console.log("Flag API response:", res);
+
       } catch (err) { res.status(500).json({ message: "Error del SOAP", err }); } }
 
     export const getCountryListController = async (req: Request, res: Response) => { 
