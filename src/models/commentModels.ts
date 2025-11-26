@@ -94,6 +94,7 @@ export const getCommentsByPostDB = async (postId: string) => {
      c.id,
       c.author_id,
       u.username AS author_username,
+       u.profile_picture_url AS author_avatar,
       c.post_id,
       c.text,
       c.created_at,
