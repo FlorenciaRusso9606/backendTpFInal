@@ -1,4 +1,4 @@
-import { getPostLikesCount, getCommentLikesCount, toggleCommenLikeDB, togglePostLikeDB, getCheckLikedCommentDB, getCheckLikedPostDB, getMyLikedPosts} from "../models/reactionModel";
+import { getPostLikesCount, getCommentLikesCount, toggleCommenLikeDB, togglePostLikeDB, getCheckLikedCommentDB, getCheckLikedPostDB, getMyLikedPosts, getPostLikesUsersDB} from "../models/reactionModel";
 import { Request, Response } from "express";
 
 export const togglePostLike = async (req: Request, res: Response) =>{
@@ -92,3 +92,13 @@ export const myLikedPosts = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Error al traer tus likes" });
     }
 };
+export const getPostLikesUsers = async (req: Request, res: Response)=>{
+    try{
+        const {postId} = req.params;
+        const users = await getPostLikesUsersDB(postId)
+        return res.status(200).json(users)
+    }catch(error){
+        console.error("Error al traer los usuarios que dieron likes al post", error)
+        res.status(500).json({message: "Error del servidor"})
+    }
+}

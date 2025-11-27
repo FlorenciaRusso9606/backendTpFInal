@@ -78,3 +78,15 @@ export const getMyLikedPosts = async (user_id: string) => {
     `, [user_id]);
     return result.rows;
 };
+export const getPostLikesUsersDB = async (postId: string) =>{
+    const result = await db.query(`SELECT 
+        u.id,
+        u.username,
+        u.displayname,
+        u.profile_picture_url
+     FROM reaction r
+     JOIN users u ON u.id = r.user_id
+     WHERE r.post_id = $1
+     ORDER BY r.created_at DESC`, [postId])
+        return result.rows
+}

@@ -6,7 +6,8 @@ import {
   getCommentLikes,
   checkUserCommentLike,
   checkUserPostLike,
-  myLikedPosts
+  myLikedPosts,
+  getPostLikesUsers
 } from "../controllers/reactionController";
 import { authenticateJWT } from "../middleware/auth";
 
@@ -20,6 +21,7 @@ router.get("/mine/posts", authenticateJWT, myLikedPosts)
 router.post("/comment/:commentId", authenticateJWT, toggleCommentLike);
 router.get("/comment/:commentId/likes", getCommentLikes);
 
+router.get("/post/:postId/users", authenticateJWT, getPostLikesUsers);
 router.get("/post/:postId/isLiked", authenticateJWT, checkUserPostLike);
 router.get("/comment/:commentId/isLiked", authenticateJWT, checkUserCommentLike);
 
