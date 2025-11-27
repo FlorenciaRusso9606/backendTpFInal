@@ -55,13 +55,14 @@ app.use(
     origin:
       process.env.NODE_ENV === "production"
         ? [
-             "https://www.bloop.cool",
+            "https://www.bloop.cool",
             "https://bloop.cool",
             "https://api.bloop.cool"
             
           ]
         : [
             "http://localhost:3000",
+            "http://localhost:4000",
             "http://192.168.0.228:8081",
             "http://localhost:8081",
             ENV.FRONTEND_URL,

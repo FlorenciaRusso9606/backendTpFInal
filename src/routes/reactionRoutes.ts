@@ -18,10 +18,9 @@ router.post("/post/:postId", authenticateJWT, togglePostLike);
 router.get("/post/:postId/likes", getPostLikes);
 router.get("/mine/posts", authenticateJWT, myLikedPosts)
 // Likes en comentarios
+router.get("/post/:postId/users", authenticateJWT, getPostLikesUsers);
 router.post("/comment/:commentId", authenticateJWT, toggleCommentLike);
 router.get("/comment/:commentId/likes", getCommentLikes);
-
-router.get("/post/:postId/users", authenticateJWT, getPostLikesUsers);
 router.get("/post/:postId/isLiked", authenticateJWT, checkUserPostLike);
 router.get("/comment/:commentId/isLiked", authenticateJWT, checkUserCommentLike);
 
