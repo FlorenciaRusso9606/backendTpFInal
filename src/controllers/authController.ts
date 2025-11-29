@@ -42,7 +42,6 @@ export const registerUser = async (req: Request, res: Response) => {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await AuthModel.createEmailVerification(newUser.id, token, expiresAt);
 
-    console.log("Attempting to send verification email to:", newUser.email);
     const mailSent = await sendVerificationEmail(newUser.email, token);
     console.log("sendVerificationEmail returned:", mailSent);
     if (!mailSent) {
@@ -69,17 +68,25 @@ export const registerUser = async (req: Request, res: Response) => {
 export const loginUser = async (req: Request, res: Response) => {
   try {
     const { identifier, password } = req.body;
-    if (!identifier || !password)
-      return res.status(400).json({ error: "Faltan credenciales" });
-
+    
+      if (!identifier || !password) {
+      return res.status(400).json({ error: "Debes completar todos los campos." });
+    }
     const user = await AuthModel.findUserByIdentifier(identifier);
-    if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
-    if (user.status !== "ACTIVE")
-      return res.status(403).json({ error: "Cuenta no verificada" });
+
+      if (!user) {
+      return res.status(404).json({ error: "El usuario no existe." });
+    }
+    if (user.status !== "ACTIVE") {
+      return res.status(403).json({
+        error: "Tu cuenta no está verificada. Por favor revisa tu email."
+      });
+    }
 
     const match = await bcrypt.compare(password, user.password_hash);
-    if (!match)
-      return res.status(401).json({ error: "Credenciales incorrectas" });
+    if (!match) {
+      return res.status(401).json({error: "La contraseña es incorrecta." });
+    }
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
@@ -114,7 +121,7 @@ export const loginUser = async (req: Request, res: Response) => {
     return res.json({ message: "Login exitoso", token, user: safeUser });
   } catch (err) {
     console.error("Login error:", err);
-    return res.status(500).json({ error: "Error al iniciar sesión" });
+    return res.status(500).json({ error: "Ocurrió un problema al iniciar sesión. Inténtalo de nuevo." });
   }
 };
 
