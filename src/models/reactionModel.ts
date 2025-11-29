@@ -68,13 +68,29 @@ export const getMyLikedPosts = async (user_id: string) => {
             
             u.id AS author_id,
             u.username AS author_username,
-             u.profile_picture_url AS post_author_avatar
+             u.profile_picture_url AS post_author_avatar,
+
+             COALESCE(
+          json_agg(
+            jsonb_build_object(
+              'id', media.id,
+              'url', media.url,
+              'type', media.type
+            )
+          ) FILTER (WHERE media.id IS NOT NULL),
+          '[]'
+        ) AS media
 
         FROM reaction r
         JOIN post p       ON r.post_id = p.id
         JOIN users u      ON p.author_id = u.id
+        LEFT JOIN media ON p.id = media.post_id
+
         WHERE r.user_id = $1
-        ORDER BY r.created_at DESC
+
+         GROUP BY p.id, u.id, u.username, u.profile_picture_url
+
+    ORDER BY MAX(r.created_at) DESC
     `, [user_id]);
     return result.rows;
 };

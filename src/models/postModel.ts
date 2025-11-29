@@ -327,25 +327,48 @@ export const hasUserSharedPost = async (author_id: string, original_post_id: str
 };
 
 export const getMyRepostsDB = async (user_id: string) => {
-    const result = await db.query(`
-        SELECT
-            p.id,
-            p.text AS content,
-            p.created_at,
-            
-            orig.id AS original_id,
-            orig.text AS original_content,
+  const result = await db.query(`
+    SELECT
+      p.id,
+      p.text AS content,
+      p.created_at,
+      
+      orig.id AS original_id,
+      orig.text AS original_content,
 
-            u.username AS author_username,
-            u.profile_picture_url AS post_author_avatar
+      u.username AS author_username,
+      u.profile_picture_url AS post_author_avatar,
 
-        FROM post p
-        JOIN post orig ON p.shared_post_id = orig.id
-        JOIN users u   ON orig.author_id = u.id
-        WHERE p.author_id = $1 AND p.shared_post_id IS NOT NULL
-        ORDER BY p.created_at DESC
-    `, [user_id]);
-    return result.rows;
+      COALESCE(
+        json_agg(
+          jsonb_build_object(
+            'id', media.id,
+            'url', media.url,
+            'type', media.type
+          )
+        ) FILTER (WHERE media.id IS NOT NULL),
+        '[]'
+      ) AS media
+
+    FROM post p
+    JOIN post orig ON p.shared_post_id = orig.id
+    JOIN users u   ON orig.author_id = u.id
+    LEFT JOIN media ON orig.id = media.post_id
+
+    WHERE p.author_id = $1
+      AND p.shared_post_id IS NOT NULL
+
+    GROUP BY 
+      p.id, 
+      orig.id,
+      u.id, 
+      u.username,
+      u.profile_picture_url
+
+    ORDER BY p.created_at DESC
+  `, [user_id]);
+
+  return result.rows;
 };
 
 export const getPostsByUserId = async (user_id: string) => {

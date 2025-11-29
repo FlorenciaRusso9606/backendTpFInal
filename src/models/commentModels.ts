@@ -9,30 +9,30 @@ export const insertCommentDB = async (
   text: string,
   parent_id?: string | null
 ): Promise<Comment> => {
-   const result = await db.query<Comment>(
-    ` INSERT INTO user_comments (author_id, post_id, text, parent_id, author_avatar)
-    VALUES ($1, $2, $3, $4, (SELECT profile_picture_url FROM users WHERE id = $1))
-    RETURNING id, author_id, post_id, text, parent_id, created_at, updated_at, author_avatar`,
-    [author_id, post_id, text, parent_id || null]
-  );
 
-  const newComment = result.rows[0];
+  // Inserto el comentario
+  const result = await db.query<Comment>(
+  `
+  INSERT INTO user_comments (author_id, post_id, text, parent_id, author_avatar)
+  VALUES ($1, $2, $3, $4, (SELECT profile_picture_url FROM users WHERE id = $1))
+  RETURNING 
+    id,
+    author_id,
+    post_id,
+    text,
+    parent_id,
+    created_at,
+    updated_at,
+    author_avatar,
+    (SELECT username FROM users WHERE id = $1) AS author_username
+  `,
+  [author_id, post_id, text, parent_id || null]
+);
 
-  // Ahora hacemos el JOIN para traer el username
-  const userResult = await db.query<Comment>(
-    `SELECT c.id, c.author_id, u.username AS author_username, c.post_id, c.text, c.parent_id, c.created_at, c.updated_at
-     FROM user_comments c
-     JOIN users u ON c.author_id = u.id
-     WHERE c.id = $1`,
-    [author_id]
-  );
-
-  return {
-    ...newComment,
-    author_username: userResult.rows[0]?.username || "Unknown",
-  } as Comment;
+  return result.rows[0];
 
 };
+
 
 
 
@@ -129,24 +129,58 @@ export const findCommentDB = async (commentId: string) => {
   return result.rows[0];
 };
 export const getMyComments = async (user_id: string) => {
-    const result = await db.query(`
-        SELECT 
-            c.id,
-            c.text AS content,
-            c.created_at,
+  const result = await db.query(`
+    SELECT 
+        c.id,
+        c.text AS content,
+        c.created_at,
 
-            p.id AS post_id,
-            p.text AS post_content,
+        -- Autor del comentario
+        cu.username AS comment_author,
+        cu.profile_picture_url AS comment_author_avatar,
 
-            u.username AS post_author,
-            u.profile_picture_url AS post_author_avatar
+        -- Datos del post
+        p.id AS post_id,
+        p.text AS post_content,
 
+        -- Autor del post
+        pu.username AS post_author,
+        pu.profile_picture_url AS post_author_avatar,
 
-        FROM user_comments c
-        JOIN post p  ON c.post_id = p.id
-        LEFT JOIN users u ON p.author_id = u.id
-        WHERE c.author_id = $1
-        ORDER BY c.created_at DESC
-    `, [user_id]);
-    return result.rows;
+        COALESCE(
+          json_agg(
+            jsonb_build_object(
+              'id', media.id,
+              'url', media.url,
+              'type', media.type
+            )
+          ) FILTER (WHERE media.id IS NOT NULL),
+          '[]'
+        ) AS media
+
+    FROM user_comments c
+    
+    JOIN users cu ON c.author_id = cu.id
+    
+    JOIN post p ON c.post_id = p.id
+    
+    LEFT JOIN users pu ON p.author_id = pu.id
+    
+    LEFT JOIN media ON p.id = media.post_id
+
+    WHERE c.author_id = $1
+
+    GROUP BY 
+      c.id,
+      cu.username,
+      cu.profile_picture_url,
+      p.id,
+      pu.username,
+      pu.profile_picture_url
+
+    ORDER BY c.created_at DESC
+  `, [user_id]);
+
+  return result.rows;
 };
+

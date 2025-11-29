@@ -322,6 +322,7 @@ export const getMyRepost = async (req: Request, res: Response) =>{
   const user_id = (req as any).user.id
   try{
     const postRepost = await getMyRepostsDB(user_id)
+
     res.status(200).json(postRepost)
   }catch(err){
     res.status(500).json({message: "Error en el servidor al traer los post reposteados"})
@@ -341,7 +342,9 @@ export const listUserPostsController = async (req: Request, res: Response) => {
 
     //  Obtener sus posts 
     const posts = await getPostsByUserId(user.id);
+
     return res.json({ data: posts });
+
   } catch (err) {
     console.error("listUserPostsController error:", err);
     res.status(500).json({ error: "Error obteniendo posts del usuario" });
