@@ -63,7 +63,6 @@ app.use(
         : [
             "http://localhost:3000",
             "http://localhost:4000",
-            "http://192.168.0.228:8081",
             "http://localhost:8081",
             ENV.FRONTEND_URL,
           ],
