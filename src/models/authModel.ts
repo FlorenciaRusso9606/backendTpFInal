@@ -77,3 +77,24 @@ export const findUserByIdentifier = async (identifier: string): Promise<User | n
   return result.rows[0] || null;
 };
 
+export async function createPasswordReset(userId: string, token: string, expiresAt: Date) {
+   await db.query( `
+    INSERT INTO password_reset_tokens (user_id, token, expires_at)
+    VALUES ($1, $2, $3)
+  `, [userId, token, expiresAt]);
+}
+export async function findPasswordResetByToken(token: string) {
+ const result=  await db.query (  `
+    SELECT * FROM password_reset_tokens WHERE token = $1
+  `, [token]);
+  return result.rows[0];
+}
+export async function markPasswordResetUsed(id: number) {
+  await db.query (  `
+    UPDATE password_reset_tokens SET used = TRUE WHERE id = $1
+  `,[id]);
+}
+export async function updatePasswordDB(userId: string, newHash: string) {
+  await db.query ( `UPDATE users SET password_hash = $1 WHERE id = $2`,
+ [newHash, userId]);
+}

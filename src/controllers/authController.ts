@@ -2,7 +2,7 @@ import { Response, Request } from "express";
 import * as bcrypt from "bcrypt";
 import * as crypto from "crypto";
 import * as jwt from "jsonwebtoken";
-import { sendVerificationEmail } from "../utils/mailer";
+import { sendVerificationEmail, sendPasswordResetEmail } from "../utils/mailer";
 import * as AuthModel from "../models/authModel";
 import * as UserModel from "../models/userModel";
 
@@ -24,6 +24,7 @@ export const registerUser = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
 
     const existingEmail = await AuthModel.findUserByIdentifier(email);
+
     const existingUsername = await AuthModel.findUserByIdentifier(username);
     if (existingEmail)
       return res.status(409).json({ error: "El email ya está registrado" });
@@ -233,5 +234,66 @@ export const getSocketToken = async (req: Request, res: Response) => {
     return res
       .status(500)
       .json({ error: "Error creando token de socket" });
+  }
+};
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email)
+      return res.status(400).json({ error: "Debes ingresar un email." });
+
+    const user = await AuthModel.findUserByIdentifier(email);
+    if (!user) {
+      return res.json({
+        message: "Si el correo existe, enviaremos un mensaje con instrucciones."
+      });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+    await AuthModel.createPasswordReset(user.id, token, expiresAt);
+
+    await sendPasswordResetEmail(user.email, token);
+
+    return res.json({
+      message: "Si el correo existe, enviaremos un mensaje con instrucciones."
+    });
+  } catch (err) {
+    console.error("forgotPassword error:", err);
+    return res.status(500).json({ error: "Error generando recuperación" });
+  }
+};
+
+
+export const updatePassword = async (req: Request, res: Response) => {
+  try {
+    const { token, userpassword } = req.body;
+
+    if (!token)
+      return res.status(400).json({ error: "Token faltante." });
+
+    if (!userpassword)
+      return res.status(400).json({ error: "Debes ingresar una contraseña." });
+
+    const reset = await AuthModel.findPasswordResetByToken(token);
+    if (!reset)
+      return res.status(400).json({ error: "Token inválido." });
+
+    if (new Date(reset.expires_at) < new Date())
+      return res.status(400).json({ error: "Token expirado." });
+
+    const hashed = await bcrypt.hash(userpassword, 10);
+
+    await AuthModel.updatePasswordDB(reset.user_id, hashed);
+
+    await AuthModel.markPasswordResetUsed(reset.id);
+
+    return res.json({ success: true, message: "Contraseña cambiada con éxito" });
+
+  } catch (err) {
+    console.error("updatePassword error:", err);
+    return res.status(500).json({ error: "Error al actualizar contraseña" });
   }
 };

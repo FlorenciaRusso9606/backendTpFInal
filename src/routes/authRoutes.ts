@@ -9,6 +9,9 @@ router.post("/register", AuthController.registerUser);
 router.post("/login", AuthController.loginUser);
 router.get("/verify", AuthController.verifyUser);
 
+router.post("/forgotPassword", AuthController.forgotPassword);
+router.put("/updatePassword", AuthController.updatePassword);
+
 /* ----------- Protected Routes ----------- */
 router.use(authenticateJWT);
 

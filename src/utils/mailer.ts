@@ -75,7 +75,7 @@ export async function sendVerificationEmail(
 ): Promise<boolean> {
   const url = `${process.env.FRONTEND_URL}/verify?token=${token}`;
   const html = `
-    <p>Bienvenido a La Red!</p>
+    <p>Bienvenido a Bloop!</p>
     <p>Para activar tu cuenta haz click en el siguiente enlace:</p>
     <p><a href="${url}">${url}</a></p>
     <p>Si no te registraste, ignorá este mensaje.</p>
@@ -101,7 +101,7 @@ export async function sendVerificationEmail(
     await sendMailWithTimeout({
       from: process.env.EMAIL_FROM,
       to,
-      subject: "Verifica tu cuenta en La Red",
+      subject: "Verifica tu cuenta de Bloop",
       html,
     });
     console.log("Verification email sent to", to);
@@ -160,6 +160,41 @@ export async function sendStatusChangeEmail(
     return true;
   } catch (err) {
     console.error("Error enviando email de cambio de estado a", to, err);
+    return false;
+  }
+}
+
+export async function sendPasswordResetEmail(to: string, token: string): Promise<boolean> {
+  const url = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  const html = `
+    <p>Solicitaste recuperar tu contraseña.</p>
+    <p>Hacé click acá para crear una nueva:</p>
+    <p><a href="${url}">${url}</a></p>
+    <p>Si no fuiste vos, ignorá este mensaje.</p>
+  `;
+
+  try {
+    if (useResend && resendClient) {
+      const resp = await resendClient.emails.send({
+        from: FROM,
+        to,
+        subject: "Restablecer contraseña",
+        html,
+      });
+      if (resp?.error) return false;
+      return true;
+    }
+
+    await sendMailWithTimeout({
+      from: process.env.EMAIL_FROM,
+      to,
+      subject: "Restablecer contraseña",
+      html,
+    });
+
+    return true;
+  } catch (err) {
+    console.error("Error enviando email a", to, err);
     return false;
   }
 }
