@@ -518,13 +518,16 @@ export async function getAllFeedDB(userId: string) {
       u.profile_picture_url AS author_profile_picture_url
 
     FROM (
-        SELECT * FROM related_posts
-        UNION
-        SELECT * FROM liked_posts
-        UNION
-        SELECT * FROM commented_posts
-        UNION
-        SELECT * FROM my_posts
+      SELECT * FROM related_posts
+      UNION
+      SELECT * FROM liked_posts
+      UNION
+      SELECT * FROM commented_posts
+      UNION
+      SELECT * FROM my_posts
+      UNION
+      -- Incluye todos los posts públicos
+      SELECT * FROM post WHERE visibility = 'public' AND is_blocked = FALSE
     ) p
     JOIN users u ON u.id = p.author_id
 
