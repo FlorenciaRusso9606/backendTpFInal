@@ -1,26 +1,42 @@
 import { Router } from "express";
-import { 
-  createPostController, 
-  listPostsController, 
+import {
+  createPostController,
+  listPostsController,
   getPostByIdController,
-  sharePostController, isSharedPostController,
+  sharePostController,
+  isSharedPostController,
   getMyRepost,
-  listUserPostsController
+  listUserPostsController,
+  myPostsController,
+  getFollowingFeed,
+  getAllFeed,
+  deletePostController,
+  updatePostController,
 } from "../controllers/postController";
 import { authenticateJWT } from "../middleware/auth";
 
 const router = Router();
-router.get("/mine/shared", authenticateJWT, getMyRepost)
-router.get("/", listPostsController);
-router.get("/mine", authenticateJWT, (req, res) => require("../controllers/postController").myPostsController(req, res));
-router.get("/following", authenticateJWT, (req, res) => require("../controllers/postController").listFollowingPostsController(req, res));
-router.get("/user/:username",  listUserPostsController)
 
+// POST ACTIONS
 router.post("/", authenticateJWT, createPostController);
 router.post("/:id/share", authenticateJWT, sharePostController);
+
+// CHECK SHARE
 router.get("/:id/isShared", authenticateJWT, isSharedPostController);
+
+// FEEDS
+router.get("/", listPostsController);
+router.get("/mine", authenticateJWT, myPostsController);
+router.get("/mine/shared", authenticateJWT, getMyRepost);
+router.get("/following", authenticateJWT, getFollowingFeed);
+router.get("/all", authenticateJWT, getAllFeed);
+
+// USER POSTS
+router.get("/user/:username", authenticateJWT, listUserPostsController);
+
+// SINGLE POST
 router.get("/:id", authenticateJWT, getPostByIdController);
-router.delete("/:id", authenticateJWT, (req, res) => require("../controllers/postController").deletePostController(req, res));
-router.patch("/:id", authenticateJWT, (req, res) => require("../controllers/postController").updatePostController(req, res));
+router.delete("/:id", authenticateJWT, deletePostController);
+router.patch("/:id", authenticateJWT, updatePostController);
 
 export default router;

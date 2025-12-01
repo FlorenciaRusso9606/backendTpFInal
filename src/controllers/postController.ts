@@ -1,9 +1,9 @@
 import { Request, Response } from "express"
-import { createMedia, createPost, getPosts, getPostsByAuthor, getPostById, blockPostById, sharePost, hasUserSharedPost, getMyRepostsDB, getPostsByUserId} from "../models/postModel"
+import { createMedia, createPost, getPosts, getPostsByAuthor, getPostById, blockPostById, sharePost, hasUserSharedPost, getMyRepostsDB, getPostsByUserId, getAllFeedDB, getFollowingFeedDB, getPublicUserPostsDB} from "../models/postModel"
 import { uploadBufferToCloudinary, deleteFromCloudinary } from "../utils/cloudinary"
 import db from '../db'
 import * as AuthModel from "../models/authModel";
-
+import * as FollowModel from "../models/followModel"
 const multer = require("multer")
 
 const ALLOWED_MIMETYPES = new Set([
@@ -42,8 +42,7 @@ export const createPostController = [
   upload.array("files", 4),
   async (req: Request, res: Response) => {
     try {
-      console.log("REQ FILES:", req.files);
-console.log("REQ BODY:", req.body);
+      console.log("BODY VISIBILITY:", req.body.visibility);
 
       const authorId = (req as any).user?.id
       if (!authorId) return res.status(401).json({ error: "No autenticado" })
@@ -67,6 +66,7 @@ console.log("REQ BODY:", req.body);
           text: text || "",
           link_url: link_url || null,
           weather: weatherObj,
+          visibility: req.body.visibility, 
         });
       } catch (postErr) {
         console.error('createPost: failed to create post', postErr)
@@ -332,17 +332,29 @@ export const getMyRepost = async (req: Request, res: Response) =>{
 
 export const listUserPostsController = async (req: Request, res: Response) => {
   try {
-    const { username } = req.params;
+    const viewerId = (req as any).user?.id;
 
+    const { username } = req.params;
+    const mode = req.query.mode as string | undefined;
+    console.log("MODE", mode)
     // Buscar usuario por username
     const user = await AuthModel.findUserByIdentifier(username);
     if (!user) {
       return res.status(404).json({ error: "Usuario no encontrado" });
     }
+        let posts;
 
-    //  Obtener sus posts 
-    const posts = await getPostsByUserId(user.id);
+if (mode === "public") {
+  posts = await getPublicUserPostsDB(user.id);
+      return res.json({ data: posts });
+      } 
 
+          const isFollowing = await FollowModel.isFollowing(viewerId, user.id);
+  if (isFollowing) {
+      posts = await getPostsByUserId(user.id);
+      return res.json({ data: posts });
+    }
+ posts = await getPublicUserPostsDB(user.id);
     return res.json({ data: posts });
 
   } catch (err) {
@@ -350,4 +362,31 @@ export const listUserPostsController = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Error obteniendo posts del usuario" });
   }
 };
+
+/*----------------- ACÁ ESTÁN LOS NUEVOS CAMBIOOOOS -----------------------*/
+
+export async function getAllFeed(req: Request, res: Response) {
+    const userId = (req as any).user?.id;
+  try {
+    
+    const result = await getAllFeedDB(userId);
+return res.json({ data: result });
+  } catch (error) {
+    console.error("Error al cargar feed ALL:", error);
+    return res.status(500).json({ error: "Error al cargar feed" });
+  }
+}
+export async function getFollowingFeed(req: Request, res: Response) {
+    const userId = (req as any).user?.id;
+
+  try {
+    
+    const result = await getFollowingFeedDB(userId);
+return res.json({ data: result });
+
+  } catch (error) {
+    console.error("Error al cargar feed Following:", error);
+    return res.status(500).json({ error: "Error al cargar feed" });
+  }
+}
 

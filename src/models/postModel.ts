@@ -1,5 +1,22 @@
 import db from "../db";
 import { randomUUID } from "crypto";
+const parseWeather = (w: any) => {
+  if (!w) return null;
+
+  // Si ya es objeto, devolver tal cual
+  if (typeof w === "object") return w;
+
+  // Si es string, intentar parsear
+  if (typeof w === "string") {
+    try {
+      return JSON.parse(w);
+    } catch {
+      return w;
+    }
+  }
+
+  return null;
+};
 
 export const createMedia = async (url: string, type: string, size: number, uploaderId?: string, post_id?: string | null) => {
   const id = randomUUID();
@@ -11,15 +28,16 @@ export const createMedia = async (url: string, type: string, size: number, uploa
   const r = await db.query(q, [id, post_id, url, type]);
   return r.rows[0];
 };
-
-export const createPost = async ({ author_id, text, link_url, media_id, weather }:
-  { author_id: string; text: string; link_url?: string | null; media_id?: string | null; weather?: any | null }) => {
+///// ACÁ CAMBIO VISIBILIDAD
+export const createPost = async ({ author_id, text, link_url, media_id, weather, visibility  }:
+  { author_id: string; text: string; link_url?: string | null; media_id?: string | null; weather?: any | null ; visibility?: string}) => {
   const id = randomUUID();
   const q = `
-    INSERT INTO post (id, author_id, text, link_url, weather, created_at, updated_at)
-    VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+    INSERT INTO post (id, author_id, text, link_url, weather, visibility, created_at, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
     RETURNING *`;
-  const r = await db.query(q, [id, author_id, text, link_url, weather ? JSON.stringify(weather) : null]);
+  const r = await db.query(q, [id, author_id, text, link_url, weather ? JSON.stringify(weather) : null,     visibility || 'followers', 
+]);
   
   if (media_id) {
     await db.query(`UPDATE media SET post_id = $1 WHERE id = $2`, [r.rows[0].id, media_id]);
@@ -372,7 +390,6 @@ export const getMyRepostsDB = async (user_id: string) => {
 };
 
 export const getPostsByUserId = async (user_id: string) => {
-  // POSTS + AUTHOR
   const postsResult = await db.query(
     `SELECT 
         p.id,
@@ -423,20 +440,243 @@ export const getPostsByUserId = async (user_id: string) => {
 
   // RESPUESTA FINAL
   return postsResult.rows.map(row => ({
-    id: row.id,
-    text: row.text,
-    link_url: row.link_url,
-    created_at: row.created_at,
-    weather: row.weather ? JSON.parse(row.weather) : null,
+  id: row.id,
+  text: row.text,
+  link_url: row.link_url,
+  created_at: row.created_at,
+
+  weather: (() => {
+    if (!row.weather) return null;
+    if (typeof row.weather === "string") {
+      try {
+        return JSON.parse(row.weather);
+      } catch {
+        return row.weather;
+      }
+    }
+    return row.weather;
+  })(),
+
+  author: {
+    id: row.author_id,
+    username: row.author_username,
+    displayname: row.author_displayname,
+    profile_picture_url: row.author_profile_picture_url,
+  },
+
+  medias: mediasByPost[row.id] || [],
+  shared_post: null,
+}));
+
+};
+
+/*----------------- ACÁ ESTÁN LOS NUEVOS CAMBIOOOOS -----------------------*/
+export async function getAllFeedDB(userId: string) {
+  const result = await db.query(`
+    WITH
+    related_users AS (
+      SELECT followed_id AS user_id FROM follow WHERE follower_id = $1
+      UNION
+      SELECT follower_id AS user_id FROM follow WHERE followed_id = $1
+    ),
+
+    related_posts AS (
+      SELECT p.*
+      FROM post p
+      WHERE p.author_id IN (SELECT user_id FROM related_users)
+    ),
+
+    liked_posts AS (
+      SELECT p.*
+      FROM reaction r
+      JOIN post p ON p.id = r.post_id
+      WHERE r.user_id = $1
+    ),
+
+    commented_posts AS (
+      SELECT p.*
+      FROM user_comments c
+      JOIN post p ON p.id = c.post_id
+      WHERE c.author_id = $1
+    ),
+
+    my_posts AS (
+      SELECT * FROM post WHERE author_id = $1
+    )
+
+    SELECT 
+      p.id,
+      p.text,
+      p.link_url,
+      p.created_at,
+      p.weather,
+      p.shared_post_id,
+
+      u.id AS author_id,
+      u.username AS author_username,
+      u.displayname AS author_displayname,
+      u.profile_picture_url AS author_profile_picture_url
+
+    FROM (
+        SELECT * FROM related_posts
+        UNION
+        SELECT * FROM liked_posts
+        UNION
+        SELECT * FROM commented_posts
+        UNION
+        SELECT * FROM my_posts
+    ) p
+    JOIN users u ON u.id = p.author_id
+
+    WHERE
+      p.visibility = 'public'
+      OR (p.visibility = 'followers' AND (
+            p.author_id IN (SELECT followed_id FROM follow WHERE follower_id = $1)
+            OR
+            p.author_id IN (SELECT follower_id FROM follow WHERE followed_id = $1)
+          ))
+      OR (p.visibility = 'intimate' AND p.author_id = $1)
+
+    ORDER BY p.created_at DESC
+  `, [userId]);
+
+  const posts = result.rows;
+
+  //  IDs
+  const postIds = posts.map(p => p.id);
+  const sharedIds = posts.filter(p => p.shared_post_id).map(p => p.shared_post_id);
+
+  // Medias normales
+  const mediasResult = await db.query(`
+    SELECT id, post_id, url, type
+    FROM media
+    WHERE post_id = ANY($1)
+  `, [postIds]);
+
+  const mediasByPost: Record<string, any[]> = {};
+  mediasResult.rows.forEach(m => {
+    if (!mediasByPost[m.post_id]) mediasByPost[m.post_id] = [];
+    mediasByPost[m.post_id].push(m);
+  });
+
+  // Shared posts 
+  let sharedPostsMap: Record<string, any> = {};
+  if (sharedIds.length > 0) {
+    const shared = await db.query(`
+      SELECT
+        p.id,
+        p.text,
+        p.link_url,
+        p.created_at,
+        p.weather,
+        p.author_id,
+
+        u.username,
+        u.displayname,
+        u.profile_picture_url
+
+      FROM post p
+      JOIN users u ON u.id = p.author_id
+      WHERE p.id = ANY($1)
+    `, [sharedIds]);
+
+    shared.rows.forEach(sp => {
+      sharedPostsMap[sp.id] = {
+        ...sp,
+        medias: mediasByPost[sp.id] || [],
+        author: {
+          id: sp.author_id,
+          username: sp.username,
+          displayname: sp.displayname,
+          profile_picture_url: sp.profile_picture_url,
+        }
+      };
+    });
+  }
+
+  // → DEVOLVER POST FORMATEADO
+  return posts.map(p => ({
+    id: p.id,
+    text: p.text,
+    link_url: p.link_url,
+    created_at: p.created_at,
+    weather: parseWeather(p.weather),
 
     author: {
-      id: row.author_id,
-      username: row.author_username,
-      displayname: row.author_displayname,
-      profile_picture_url: row.author_profile_picture_url,
+      id: p.author_id,
+      username: p.author_username,
+      displayname: p.author_displayname,
+      profile_picture_url: p.author_profile_picture_url,
     },
 
-    medias: mediasByPost[row.id] || [],
-    shared_post: null,
+    medias: mediasByPost[p.id] || [],
+    shared_post: p.shared_post_id ? sharedPostsMap[p.shared_post_id] : null,
   }));
+}
+
+export async function getFollowingFeedDB(userId: string) {
+    const result = await db.query(`
+     SELECT p.*
+FROM post p
+WHERE 
+  p.author_id IN (
+    SELECT followed_id
+    FROM follow
+    WHERE follower_id = $1
+  )
+  AND (
+    p.visibility = 'public'
+    OR p.visibility = 'followers'
+  )
+ORDER BY p.created_at DESC;
+    `, [userId])
+
+      return result.rows
+}
+export const getPublicUserPostsDB = async (userId: string) => {
+  const result = await db.query(
+    `
+    SELECT 
+      p.id,
+      p.text,
+      p.link_url,
+      p.created_at,
+      p.weather,
+      p.shared_post_id,
+
+      json_build_object(
+        'id', u.id,
+        'username', u.username,
+        'displayname', u.displayname,
+        'profile_picture_url', u.profile_picture_url
+      ) AS author,
+
+      COALESCE(
+        (
+          SELECT json_agg(jsonb_build_object('url', m.url, 'type', m.type))
+          FROM media m
+          WHERE m.post_id = p.id
+        ),
+        '[]'
+      ) AS medias
+
+    FROM post p
+    JOIN users u ON p.author_id = u.id
+
+    WHERE 
+      p.author_id = $1
+      AND p.visibility = 'public'
+      AND p.is_blocked = false
+
+    ORDER BY p.created_at DESC;
+    `,
+    [userId]
+  );
+console.log("USER ID", userId)
+  console.log("RESULT ROWS", result.rows)
+
+  return result.rows;
 };
+
+
+   
