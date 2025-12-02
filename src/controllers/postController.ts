@@ -42,7 +42,6 @@ export const createPostController = [
   upload.array("files", 4),
   async (req: Request, res: Response) => {
     try {
-      console.log("BODY VISIBILITY:", req.body.visibility);
 
       const authorId = (req as any).user?.id
       if (!authorId) return res.status(401).json({ error: "No autenticado" })
@@ -336,7 +335,6 @@ export const listUserPostsController = async (req: Request, res: Response) => {
 
     const { username } = req.params;
     const mode = req.query.mode as string | undefined;
-    console.log("MODE", mode)
     // Buscar usuario por username
     const user = await AuthModel.findUserByIdentifier(username);
     if (!user) {
@@ -355,6 +353,7 @@ if (mode === "public") {
       return res.json({ data: posts });
     }
  posts = await getPublicUserPostsDB(user.id);
+
     return res.json({ data: posts });
 
   } catch (err) {

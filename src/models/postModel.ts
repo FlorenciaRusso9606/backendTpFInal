@@ -413,7 +413,7 @@ export const getPostsByUserId = async (user_id: string) => {
 
   const postIds = postsResult.rows.map(r => r.id);
 
-  //  MEDIAS
+  // MEDIAS
   let mediasByPost: Record<string, any[]> = {};
 
   if (postIds.length > 0) {
@@ -438,37 +438,27 @@ export const getPostsByUserId = async (user_id: string) => {
     });
   }
 
-  // RESPUESTA FINAL
-  return postsResult.rows.map(row => ({
-  id: row.id,
-  text: row.text,
-  link_url: row.link_url,
-  created_at: row.created_at,
+  const posts = postsResult.rows.map(row => ({
+    id: row.id,
+    text: row.text,
+    link_url: row.link_url,
+    created_at: row.created_at,
+    weather: row.weather,
+    shared_post_id: row.shared_post_id,
 
-  weather: (() => {
-    if (!row.weather) return null;
-    if (typeof row.weather === "string") {
-      try {
-        return JSON.parse(row.weather);
-      } catch {
-        return row.weather;
-      }
-    }
-    return row.weather;
-  })(),
+    author: {
+      id: row.author_id,
+      username: row.author_username,
+      displayname: row.author_displayname,
+      profile_picture_url: row.author_profile_picture_url,
+    },
 
-  author: {
-    id: row.author_id,
-    username: row.author_username,
-    displayname: row.author_displayname,
-    profile_picture_url: row.author_profile_picture_url,
-  },
+    medias: mediasByPost[row.id] || [],
+  }));
 
-  medias: mediasByPost[row.id] || [],
-  shared_post: null,
-}));
-
+  return posts;
 };
+
 
 /*----------------- ACÁ ESTÁN LOS NUEVOS CAMBIOOOOS -----------------------*/
 export async function getAllFeedDB(userId: string) {
@@ -618,24 +608,54 @@ export async function getAllFeedDB(userId: string) {
 }
 
 export async function getFollowingFeedDB(userId: string) {
-    const result = await db.query(`
-     SELECT p.*
-FROM post p
-WHERE 
-  p.author_id IN (
-    SELECT followed_id
-    FROM follow
-    WHERE follower_id = $1
-  )
-  AND (
-    p.visibility = 'public'
-    OR p.visibility = 'followers'
-  )
-ORDER BY p.created_at DESC;
-    `, [userId])
+  const result = await db.query(`
+    SELECT 
+      p.id,
+      p.text,
+      p.link_url,
+      p.created_at,
+      p.weather,
+      p.shared_post_id,
+      p.visibility,
 
-      return result.rows
+      u.id AS author_id,
+      u.username AS author_username,
+      u.displayname AS author_displayname,
+      u.profile_picture_url AS author_profile_picture_url
+
+    FROM post p
+    INNER JOIN users u ON p.author_id = u.id
+    WHERE 
+      p.author_id IN (
+        SELECT followed_id
+        FROM follow
+        WHERE follower_id = $1
+      )
+      AND (
+        p.visibility = 'public'
+        OR p.visibility = 'followers'
+      )
+    ORDER BY p.created_at DESC
+  `, [userId]);
+
+  return result.rows.map(row => ({
+    id: row.id,
+    text: row.text,
+    link_url: row.link_url,
+    created_at: row.created_at,
+    weather: row.weather,
+    shared_post_id: row.shared_post_id,
+    visibility: row.visibility,
+
+    author: {
+      id: row.author_id,
+      username: row.author_username,
+      displayname: row.author_displayname,
+      profile_picture_url: row.author_profile_picture_url,
+    }
+  }));
 }
+
 export const getPublicUserPostsDB = async (userId: string) => {
   const result = await db.query(
     `
