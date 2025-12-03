@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import * as FollowModel from "../models/followModel";
 import { getUserById } from "../models/userModel";
 import { isEitherBlocked } from "../models/blockModel";
+import NotificationService from "../services/notificationService";
 
 async function validateFollowAction(followerId: string, targetId: string) {
   if (!targetId) return { error: "targetId required", code: 400 };
@@ -26,6 +27,19 @@ export async function follow(req: Request, res: Response) {
     if (validation.error) return res.status(validation.code).json({ message: validation.error });
 
     await FollowModel.toggleFollow(followerId, targetId, "follow");
+
+    //crea la notif
+    const notificationService = (req as any).notificationService
+
+    await notificationService.createNotification({
+      user_id: targetId,
+      sender_id: followerId,
+      type: 'FOLLOW',
+      ref_id: followerId,
+      ref_type: 'user',
+      message: 'ha comenzado a seguirte'
+    })
+    
     res.json({ message: "Followed successfully" });
   } catch (err) {
     console.error("follow error:", err);
