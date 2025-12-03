@@ -349,7 +349,8 @@ if (mode === "public") {
 
           const isFollowing = await FollowModel.isFollowing(viewerId, user.id);
   if (isFollowing) {
-      posts = await getPostsByUserId(user.id);
+      posts = await getPostsByUserId(user.id, viewerId);
+
       return res.json({ data: posts });
     }
  posts = await getPublicUserPostsDB(user.id);

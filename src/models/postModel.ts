@@ -157,7 +157,7 @@ export const getPostsByFollowed = async (userId: string) => {
     LEFT JOIN users u ON p.author_id = u.id
     LEFT JOIN post sp ON p.shared_post_id = sp.id
     LEFT JOIN users spu ON sp.author_id = spu.id
-    -- Only posts from users that the given user follows
+
     WHERE p.is_blocked = FALSE
       AND p.author_id IN (SELECT followed_id FROM follow WHERE follower_id = $1)
       AND (p.shared_post_id IS NULL OR (sp.id IS NOT NULL AND sp.is_blocked = FALSE))
@@ -201,7 +201,7 @@ export const getPostsByAuthor = async (authorId: string) => {
       sp.text AS shared_post_text,
       sp.link_url AS shared_post_link,
       sp.created_at AS shared_post_created_at,
-  (sp.is_blocked = FALSE) AS shared_post_id_visible,
+      (sp.is_blocked = FALSE) AS shared_post_id_visible,
 
       json_build_object(
         'id', spu.id,
@@ -223,8 +223,12 @@ export const getPostsByAuthor = async (authorId: string) => {
     LEFT JOIN post sp ON p.shared_post_id = sp.id
     LEFT JOIN users spu ON sp.author_id = spu.id
     LEFT JOIN media sm ON sm.post_id = sp.id
-  WHERE p.author_id = $1 AND p.is_blocked = FALSE
-    AND (p.shared_post_id IS NULL OR (sp.id IS NOT NULL AND sp.is_blocked = FALSE))
+
+    WHERE p.author_id = $1 
+      AND p.is_blocked = FALSE
+      AND p.visibility IN ('public', 'followers', 'intimate')
+      AND (p.shared_post_id IS NULL OR (sp.id IS NOT NULL AND sp.is_blocked = FALSE))
+
     GROUP BY p.id, u.id, sp.id, spu.id
     ORDER BY p.created_at DESC
     LIMIT 100;
@@ -389,7 +393,8 @@ export const getMyRepostsDB = async (user_id: string) => {
   return result.rows;
 };
 
-export const getPostsByUserId = async (user_id: string) => {
+export const getPostsByUserId = async (authorId: string, viewerId: string) => {
+
   const postsResult = await db.query(
     `SELECT 
         p.id,
@@ -398,6 +403,7 @@ export const getPostsByUserId = async (user_id: string) => {
         p.created_at,
         p.weather,
         p.shared_post_id,
+        p.visibility,
 
         u.id AS author_id,
         u.username AS author_username,
@@ -407,22 +413,22 @@ export const getPostsByUserId = async (user_id: string) => {
       FROM post p
       INNER JOIN users u ON p.author_id = u.id
       WHERE p.author_id = $1
+        AND p.is_blocked = FALSE
+        AND (
+              p.visibility != 'intimate'
+           OR (p.visibility = 'intimate' AND p.author_id = $2)
+        )
       ORDER BY p.created_at DESC`,
-    [user_id]
+    [authorId, viewerId]
   );
 
+  // MEDIA
   const postIds = postsResult.rows.map(r => r.id);
-
-  // MEDIAS
-  let mediasByPost: Record<string, any[]> = {};
+  const mediasByPost: Record<string, any[]> = {};
 
   if (postIds.length > 0) {
     const mediasResult = await db.query(
-      `SELECT 
-          id,
-          post_id,
-          url,
-          type
+      `SELECT id, post_id, url, type
        FROM media
        WHERE post_id = ANY($1)`,
       [postIds]
@@ -430,21 +436,17 @@ export const getPostsByUserId = async (user_id: string) => {
 
     mediasResult.rows.forEach(m => {
       if (!mediasByPost[m.post_id]) mediasByPost[m.post_id] = [];
-      mediasByPost[m.post_id].push({
-        id: m.id,
-        url: m.url,
-        type: m.type,
-      });
+      mediasByPost[m.post_id].push(m);
     });
   }
 
-  const posts = postsResult.rows.map(row => ({
+  return postsResult.rows.map(row => ({
     id: row.id,
     text: row.text,
     link_url: row.link_url,
     created_at: row.created_at,
-    weather: row.weather,
-    shared_post_id: row.shared_post_id,
+    weather: typeof row.weather === "string" ? JSON.parse(row.weather) : row.weather,
+    visibility: row.visibility,
 
     author: {
       id: row.author_id,
@@ -455,87 +457,103 @@ export const getPostsByUserId = async (user_id: string) => {
 
     medias: mediasByPost[row.id] || [],
   }));
-
-  return posts;
 };
 
 
-/*----------------- ACÁ ESTÁN LOS NUEVOS CAMBIOOOOS -----------------------*/
 export async function getAllFeedDB(userId: string) {
   const result = await db.query(`
     WITH
-    related_users AS (
-      SELECT followed_id AS user_id FROM follow WHERE follower_id = $1
-      UNION
-      SELECT follower_id AS user_id FROM follow WHERE followed_id = $1
-    ),
 
-    related_posts AS (
-      SELECT p.*
-      FROM post p
-      WHERE p.author_id IN (SELECT user_id FROM related_users)
-    ),
+mutual_users AS (
+  SELECT u1.followed_id AS user_id
+  FROM follow u1
+  JOIN follow u2
+    ON u1.followed_id = u2.follower_id
+   AND u2.followed_id = u1.follower_id
+  WHERE u1.follower_id = $1
+),
 
-    liked_posts AS (
-      SELECT p.*
-      FROM reaction r
-      JOIN post p ON p.id = r.post_id
-      WHERE r.user_id = $1
-    ),
+related_posts AS (
+  SELECT p.*
+  FROM post p
+  WHERE p.author_id IN (SELECT user_id FROM mutual_users)
+    AND p.visibility IN ('public', 'followers')
+    AND p.is_blocked = FALSE
+),
 
-    commented_posts AS (
-      SELECT p.*
-      FROM user_comments c
-      JOIN post p ON p.id = c.post_id
-      WHERE c.author_id = $1
-    ),
-
-    my_posts AS (
-      SELECT * FROM post WHERE author_id = $1
+liked_posts AS (
+  SELECT p.*
+  FROM reaction r
+  JOIN post p ON p.id = r.post_id
+  WHERE r.user_id = $1
+    AND (
+      p.visibility = 'public' OR
+      (p.visibility = 'followers' AND p.author_id IN (SELECT user_id FROM mutual_users)) OR
+      (p.visibility = 'intimate' AND p.author_id = $1)
     )
+    AND p.is_blocked = FALSE
+),
 
-    SELECT 
-      p.id,
-      p.text,
-      p.link_url,
-      p.created_at,
-      p.weather,
-      p.shared_post_id,
+commented_posts AS (
+  SELECT p.*
+  FROM user_comments c
+  JOIN post p ON p.id = c.post_id
+  WHERE c.author_id = $1
+    AND (
+      p.visibility = 'public' OR
+      (p.visibility = 'followers' AND p.author_id IN (SELECT user_id FROM mutual_users)) OR
+      (p.visibility = 'intimate' AND p.author_id = $1)
+    )
+    AND p.is_blocked = FALSE
+),
 
-      u.id AS author_id,
-      u.username AS author_username,
-      u.displayname AS author_displayname,
-      u.profile_picture_url AS author_profile_picture_url
+my_posts AS (
+  SELECT *
+  FROM post
+  WHERE author_id = $1
+    AND is_blocked = FALSE
+),
 
-    FROM (
-      SELECT * FROM related_posts
-      UNION
-      SELECT * FROM liked_posts
-      UNION
-      SELECT * FROM commented_posts
-      UNION
-      SELECT * FROM my_posts
-      UNION
-      -- Incluye todos los posts públicos
-      SELECT * FROM post WHERE visibility = 'public' AND is_blocked = FALSE
-    ) p
-    JOIN users u ON u.id = p.author_id
+public_posts AS (
+  SELECT *
+  FROM post
+  WHERE visibility = 'public'
+    AND is_blocked = FALSE
+)
 
-    WHERE
-      p.visibility = 'public'
-      OR (p.visibility = 'followers' AND (
-            p.author_id IN (SELECT followed_id FROM follow WHERE follower_id = $1)
-            OR
-            p.author_id IN (SELECT follower_id FROM follow WHERE followed_id = $1)
-          ))
-      OR (p.visibility = 'intimate' AND p.author_id = $1)
+SELECT 
+  p.id,
+  p.text,
+  p.link_url,
+  p.created_at,
+  p.weather,
+  p.shared_post_id,
 
-    ORDER BY p.created_at DESC
+  u.id AS author_id,
+  u.username AS author_username,
+  u.displayname AS author_displayname,
+  u.profile_picture_url AS author_profile_picture_url
+
+FROM (
+  SELECT * FROM related_posts
+  UNION
+  SELECT * FROM liked_posts
+  UNION
+  SELECT * FROM commented_posts
+  UNION
+  SELECT * FROM my_posts
+  UNION
+  SELECT * FROM public_posts
+) p
+
+JOIN users u ON u.id = p.author_id
+
+ORDER BY p.created_at DESC;
   `, [userId]);
 
   const posts = result.rows;
 
-  //  IDs
+  // IDs
   const postIds = posts.map(p => p.id);
   const sharedIds = posts.filter(p => p.shared_post_id).map(p => p.shared_post_id);
 
@@ -552,7 +570,7 @@ export async function getAllFeedDB(userId: string) {
     mediasByPost[m.post_id].push(m);
   });
 
-  // Shared posts 
+  // Shared posts
   let sharedPostsMap: Record<string, any> = {};
   if (sharedIds.length > 0) {
     const shared = await db.query(`
@@ -587,7 +605,7 @@ export async function getAllFeedDB(userId: string) {
     });
   }
 
-  // → DEVOLVER POST FORMATEADO
+  // → DEVUELVE POST FORMATEADO
   return posts.map(p => ({
     id: p.id,
     text: p.text,
