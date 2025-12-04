@@ -2,10 +2,6 @@
 import { Request, Response, NextFunction } from "express";
 import * as BlockModel from "../models/blockModel";
 
-/**
- * Middleware para rutas que muestran el perfil 
- * Si target bloqueó al viewer -> 403
- */
 export default async function checkBlock(req: Request, res: Response, next: NextFunction) {
   try {
     const viewerId = (req as any).user?.id;

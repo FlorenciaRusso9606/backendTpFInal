@@ -87,7 +87,6 @@ passport.deserializeUser(async (id: string, done) => {
   console.log(" Deserialize user id:", id);
   try {
     const { rows } = await db.query("SELECT * FROM users WHERE id = $1", [id]);
-    console.log(" Usuario deserializado:", rows[0]?.email || "(no encontrado)");
     done(null, rows[0] || null);
   } catch (err) {
     console.error("❌ Error en deserializeUser:", err);

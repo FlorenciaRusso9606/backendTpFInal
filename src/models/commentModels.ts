@@ -3,6 +3,11 @@ import { Comment } from "../types/comment";
 
 const MAX_DEPTH = 6;
 
+export const getCommentOwner = async (commentId: string) => {
+  const result = await db.query("SELECT author_id FROM comments WHERE id = $1", [commentId]);
+  return result.rows[0]?.author_id;
+};
+
 export const insertCommentDB = async (
   author_id: string,
   post_id: string,

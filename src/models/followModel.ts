@@ -1,6 +1,5 @@
 import db from "../db";
 
-/** Inserta o elimina follow según la acción */
 export async function toggleFollow(followerId: string, followedId: string, action: "follow" | "unfollow") {
   const client = await db.connect();
   try {
@@ -12,13 +11,6 @@ export async function toggleFollow(followerId: string, followedId: string, actio
          VALUES ($1, $2)
          ON CONFLICT (follower_id, followed_id) DO NOTHING`,
         [followerId, followedId]
-      );
-
-      await client.query(
-        `INSERT INTO notification (user_id, type, ref_id)
-         VALUES ($1, 'FOLLOW', $2)
-         ON CONFLICT DO NOTHING`,
-        [followedId, followerId]
       );
     } else {
       await client.query(

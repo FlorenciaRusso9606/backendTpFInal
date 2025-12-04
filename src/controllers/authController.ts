@@ -6,17 +6,11 @@ import { sendVerificationEmail, sendPasswordResetEmail } from "../utils/mailer";
 import * as AuthModel from "../models/authModel";
 import * as UserModel from "../models/userModel";
 
-// =============================
-// JWT SECRET
-// =============================
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error("Falta JWT_SECRET en .env");
 }
 
-// =============================
-// Registrar usuario
-// =============================
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const { email, username, password, displayname } = req.body;
@@ -63,9 +57,6 @@ export const registerUser = async (req: Request, res: Response) => {
   }
 };
 
-// =============================
-// Login usuario
-// =============================
 export const loginUser = async (req: Request, res: Response) => {
   try {
     const { identifier, password } = req.body;
@@ -126,9 +117,6 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 };
 
-// =============================
-// Logout
-// =============================
 export const logoutUser = (req: Request, res: Response) => {
   res.clearCookie("token", {
     httpOnly: true,
@@ -140,9 +128,6 @@ export const logoutUser = (req: Request, res: Response) => {
   res.json({ message: "Logout exitoso" });
 };
 
-// =============================
-// Verificar usuario por email
-// =============================
 export const verifyUser = async (req: Request, res: Response) => {
   try {
     const token = String(req.query.token || req.body.token || "");
@@ -171,9 +156,6 @@ export const verifyUser = async (req: Request, res: Response) => {
   }
 };
 
-// =============================
-// Obtener usuario actual
-// =============================
 export const getMe = async (req: Request, res: Response) => {
   try {
     let token = req.cookies.token;
@@ -215,9 +197,6 @@ export const getMe = async (req: Request, res: Response) => {
   }
 };
 
-// =============================
-// Token para sockets
-// =============================
 export const getSocketToken = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;

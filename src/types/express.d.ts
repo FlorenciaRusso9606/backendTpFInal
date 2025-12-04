@@ -1,5 +1,3 @@
-// src/types/express.d.ts
-
 import "express";
 import type { User } from "./user";
 import type { Server as SocketIOServer } from "socket.io";

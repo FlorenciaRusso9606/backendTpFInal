@@ -1,10 +1,8 @@
 import db from "../db";
 
-// ------------------- TYPES -------------------
-
 export interface ToggleResultPost {
   liked: boolean;
-  post_owner?: string | null;   // <- opcional correctamente tipado
+  post_owner?: string | null;
 }
 
 export interface ToggleResultComment {
@@ -12,15 +10,11 @@ export interface ToggleResultComment {
   comment_owner?: string | null;
 }
 
-// -------------------------------------------------------------
-// LIKE / UNLIKE ─── Posts
-// -------------------------------------------------------------
 export const togglePostLikeDB = async (
   user_id: string,
   post_id: string
 ): Promise<ToggleResultPost> => {
   
-  // Obtener autor del post
   const ownerRes = await db.query(
     `SELECT author_id FROM post WHERE id = $1`,
     [post_id]
@@ -47,9 +41,6 @@ export const togglePostLikeDB = async (
   }
 };
 
-// -------------------------------------------------------------
-// LIKE / UNLIKE ─── Comments
-// -------------------------------------------------------------
 export const toggleCommentLikeDB = async (
   user_id: string,
   comment_id: string
@@ -81,9 +72,6 @@ export const toggleCommentLikeDB = async (
   }
 };
 
-// -------------------------------------------------------------
-// COUNTS
-// -------------------------------------------------------------
 export const getPostLikesCount = async (post_id: string): Promise<number> => {
   const res = await db.query(
     `SELECT COUNT(*) AS likes_count FROM reaction WHERE post_id = $1`,
@@ -100,9 +88,6 @@ export const getCommentLikesCount = async (comment_id: string): Promise<number> 
   return Number(res.rows[0].likes_count);
 };
 
-// -------------------------------------------------------------
-// CHECK LIKED
-// -------------------------------------------------------------
 export const getCheckLikedPostDB = async (user_id: string | undefined, postId: string) => {
   const result = await db.query(
     `SELECT 1 FROM reaction WHERE user_id = $1 AND post_id = $2`,
@@ -119,9 +104,6 @@ export const getCheckLikedCommentDB = async (user_id: string | undefined, commen
   return (result.rowCount ?? 0) > 0;
 };
 
-// -------------------------------------------------------------
-// MY LIKED POSTS
-// -------------------------------------------------------------
 export const getMyLikedPosts = async (user_id: string) => {
   const result = await db.query(
     `
@@ -155,9 +137,6 @@ export const getMyLikedPosts = async (user_id: string) => {
   return result.rows;
 };
 
-// -------------------------------------------------------------
-// USERS WHO LIKED A POST
-// -------------------------------------------------------------
 export const getPostLikesUsersDB = async (postId: string) => {
   const result = await db.query(
     `

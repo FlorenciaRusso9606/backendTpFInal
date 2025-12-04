@@ -1,3 +1,4 @@
+// src/controllers/followController.ts
 import { Request, Response } from "express";
 import * as FollowModel from "../models/followModel";
 import { getUserById } from "../models/userModel";
@@ -24,26 +25,27 @@ export async function follow(req: Request, res: Response) {
     const targetId = req.params.targetId;
 
     const validation = await validateFollowAction(followerId, targetId);
-    if (validation.error) return res.status(validation.code).json({ message: validation.error });
+    if (validation.error) {
+      return res.status(validation.code).json({ message: validation.error });
+    }
 
     await FollowModel.toggleFollow(followerId, targetId, "follow");
 
-    //crea la notif
-    const notificationService = (req as any).notificationService
+    const notificationService: NotificationService = (req as any).notificationService;
 
     await notificationService.createNotification({
       user_id: targetId,
       sender_id: followerId,
-      type: 'FOLLOW',
+      type: "FOLLOW",
       ref_id: followerId,
-      ref_type: 'user',
-      message: 'ha comenzado a seguirte'
-    })
-    
-    res.json({ message: "Followed successfully" });
+      ref_type: "USER",
+      message: "ha comenzado a seguirte"
+    });
+    return res.json({ message: "Followed successfully" });
+
   } catch (err) {
     console.error("follow error:", err);
-    res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }
 
@@ -53,14 +55,19 @@ export async function unfollow(req: Request, res: Response) {
     const targetId = req.params.targetId;
 
     const validation = await validateFollowAction(followerId, targetId);
-    if (validation.error && validation.code !== 403 && validation.code !== 400)
+
+    // solo bloquear si es error grave (no bloquear por 403 o 400)
+    if (validation.error && validation.code >= 404) {
       return res.status(validation.code).json({ message: validation.error });
+    }
 
     await FollowModel.toggleFollow(followerId, targetId, "unfollow");
-    res.json({ message: "User unfollowed successfully" });
+
+    return res.json({ message: "User unfollowed successfully" });
+
   } catch (err) {
     console.error("unfollow error:", err);
-    res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }
 
@@ -68,10 +75,12 @@ export async function getFollowers(req: Request, res: Response) {
   try {
     const userId = req.params.userId || (req as any).user.id;
     const followers = await FollowModel.getFollowRelations(userId, "followers");
-    res.json(followers);
+
+    return res.json(followers);
+
   } catch (err) {
     console.error("Error fetching followers:", err);
-    res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }
 
@@ -79,10 +88,12 @@ export async function getFollowing(req: Request, res: Response) {
   try {
     const userId = req.params.userId || (req as any).user.id;
     const following = await FollowModel.getFollowRelations(userId, "following");
-    res.json(following);
+
+    return res.json(following);
+
   } catch (err) {
     console.error("Error fetching following:", err);
-    res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }
 
@@ -99,9 +110,11 @@ export async function status(req: Request, res: Response) {
     if (!targetUser) return res.status(404).json({ message: "Target user not found" });
 
     const status = await FollowModel.getFollowStatus(viewerId, targetId);
-    res.json(status);
+
+    return res.json(status);
+
   } catch (err) {
     console.error("status error:", err);
-    res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }

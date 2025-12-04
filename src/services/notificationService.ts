@@ -1,9 +1,7 @@
-// src/services/notificationService.ts
 import { Server } from "socket.io";
 import { Pool } from "pg";
 import { ENV } from "../config/env";
-import { NotificationPayload } from "../types/notification";
-import { getUser } from "../controllers/userController";
+import { NotificationCreatePayload } from "../types/notification";
 
 export default class NotificationService {
   db: Pool;
@@ -16,15 +14,13 @@ export default class NotificationService {
     this.userSockets = (io as any).userSockets;
   }
 
-  async createNotification(p: NotificationPayload) {
-    const { rows } = await this.db.query(
-      `INSERT INTO notification (user_id, sender_id, type, ref_id, ref_type, message, metadata)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
-        RETURNING *,
-        (SELECT username FROM users WHERE id = $1) AS recipient_username,
-        (SELECT username FROM users WHERE id = $2) AS sender_username,
-        (SELECT profile_picture_url FROM users WHERE id = $2) AS avatar_sender_username
-      `,
+  async createNotification(p: NotificationCreatePayload) {
+    const insert = await this.db.query(
+      `
+      INSERT INTO notification (user_id, sender_id, type, ref_id, ref_type, message, metadata)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      RETURNING *
+    `,
       [
         p.user_id,
         p.sender_id || null,
@@ -36,8 +32,30 @@ export default class NotificationService {
       ]
     );
 
-    const notif = rows[0];
-    // Emitir via socket a todos los sockets del user si están online
+    const baseNotif = insert.rows[0];
+
+    const { rows } = await this.db.query(
+      `
+      SELECT n.*,
+        json_build_object(
+          'id', u.id,
+          'username', u.username,
+          'displayname', u.displayname,
+          'profile_picture_url', u.profile_picture_url
+        ) AS sender
+      FROM notification n
+      LEFT JOIN users u ON n.sender_id = u.id
+      WHERE n.id = $1
+    `,
+      [baseNotif.id]
+    );
+
+    let notif = rows[0];
+
+    // 🔥 Cargar el objeto referenciado dinámicamente
+    notif.ref = await this.loadReferenceObject(notif.ref_type, notif.ref_id);
+
+    // Emitir por sockets
     try {
       const sockets = this.userSockets?.get(p.user_id);
       if (sockets && sockets.size > 0) {
@@ -52,6 +70,7 @@ export default class NotificationService {
     return notif;
   }
 
+
   // Opcional: marcar como leída
   async markAsSeen(notificationId: string, userId: string) {
     const { rows } = await this.db.query(
@@ -60,12 +79,70 @@ export default class NotificationService {
     );
     const notif = rows[0];
     if (notif) {
-      // emitir evento a sockets del usuario para sincronizar UI
       const sockets = this.userSockets?.get(userId);
       if (sockets) {
         sockets.forEach((s) => this.io.to(s).emit("notification_seen", notif));
       }
     }
     return notif;
+  }
+
+  private async loadReferenceObject(refType: string | null, refId: string | null) {
+    if (!refId || !refType) return null;
+
+    switch (refType) {
+      case "POST": {
+        const { rows } = await this.db.query(
+          `
+          SELECT p.*, 
+            json_build_object(
+              'id', u.id,
+              'username', u.username,
+              'displayname', u.displayname,
+              'profile_picture_url', u.profile_picture_url
+            ) AS author
+          FROM posts p
+          JOIN users u ON u.id = p.author_id
+          WHERE p.id = $1
+        `,
+          [refId]
+        );
+        return rows[0] || null;
+      }
+
+      case "USER": {
+        const { rows } = await this.db.query(
+          `
+          SELECT id, username, displayname, profile_picture_url
+          FROM users
+          WHERE id = $1
+        `,
+          [refId]
+        );
+        return rows[0] || null;
+      }
+
+      case "COMMENT": {
+        const { rows } = await this.db.query(
+          `
+          SELECT c.*, 
+            json_build_object(
+              'id', u.id,
+              'username', u.username,
+              'displayname', u.displayname,
+              'profile_picture_url', u.profile_picture_url
+            ) AS author
+          FROM comments c
+          JOIN users u ON u.id = c.user_id
+          WHERE c.id = $1
+        `,
+          [refId]
+        );
+        return rows[0] || null;
+      }
+
+      default:
+        return null;
+    }
   }
 }

@@ -7,6 +7,7 @@ const session = require("express-session");
 import passport from "./config/passport";
 
 // routes
+import notificationRoutes from './routes/notificationRoutes'
 import translationRoutes from "./routes/translationRoutes";
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
@@ -27,6 +28,7 @@ import debugRoutes from "./routes/debugRoutes";
 const { Server: SocketIOServer } = require("socket.io");
 import initChat from "./sockets/chat";
 import { initNotifications } from "./sockets/notifications";
+import initReactions from "./sockets/reactions";
 import { attachIO } from "./middleware/socket";
 import "express-session";
 import { attachNotificationService } from "./middleware/notification";
@@ -174,12 +176,10 @@ const io = new SocketIOServer(server, {
   },
 });
 
-// Services
-const notificationService = new NotificationService(db, io);
-
 // Socket Handlers
 initChat(io);
 initNotifications(io)
+initReactions(io)
 
 // Middleware
 app.use(attachIO(io));
@@ -202,6 +202,7 @@ app.use("/api/countries", countryRoutes);
 app.use("/api/weather", weatherRoutes);
 app.use("/api/photo", photoRoutes);
 app.use("/api/debug", debugRoutes);
+app.use('/api/notifications', notificationRoutes)
 
 // INICIAR
 server.listen(PORT, () =>

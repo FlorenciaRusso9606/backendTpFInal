@@ -53,7 +53,6 @@ export const createPostController = [
       const folder = process.env.CLOUDINARY_FOLDER ? `${process.env.CLOUDINARY_FOLDER}/posts` : "posts"
 
     
-      // parse weather from request (if present)
       let weatherObj = null;
       try {
         if (req.body.weather) weatherObj = typeof req.body.weather === 'string' ? JSON.parse(req.body.weather) : req.body.weather;
@@ -155,7 +154,6 @@ export const deletePostController = async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'No autorizado para eliminar este post' })
     }
     
-    // First, remove any posts that shared this post (and their media assets)
     try {
       const sharesRes = await db.query(`SELECT id FROM post WHERE shared_post_id = $1`, [postId])
       const shares = sharesRes.rows || []
@@ -194,7 +192,6 @@ export const deletePostController = async (req: Request, res: Response) => {
       console.warn('error fetching shares', err)
     }
 
-    // Now remove media for the original post
     const mediasRes = await db.query(`SELECT id, url, type FROM media WHERE post_id = $1`, [postId])
     const medias = mediasRes.rows || []
     

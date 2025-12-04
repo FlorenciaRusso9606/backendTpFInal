@@ -41,7 +41,6 @@ export const fetchUrl = async (req: Request, res: Response) => {
     if (!url) return res.status(400).json({ ok: false, error: "Missing 'url' param or body" });
 
     console.log(`[debug] fetchUrl -> attempting to fetch: ${url}`);
-    // Use global fetch (Node 18+) if available
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     let resp;
