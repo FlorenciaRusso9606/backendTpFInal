@@ -18,7 +18,6 @@ import commentRoutes from "./routes/commentRoutes";
 import followRoutes from "./routes/followRoutes";
 import messageRoutes from "./routes/messageRoutes";
 import reportRoutes from "./routes/reportRoutes";
-import notificationRoutes from "./routes/notificationRoutes";
 import countryRoutes from "./routes/countryRoutes";
 import weatherRoutes from "./routes/weatherRoutes";
 import photoRoutes from "./routes/photoRoutes";
