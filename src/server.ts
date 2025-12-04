@@ -195,7 +195,6 @@ app.use("/api/posts", postRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/reactions", reactionRoutes);
 app.use("/api/translate", translationRoutes);
-app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/follow", followRoutes);
 app.use("/api/messages", messageRoutes);
