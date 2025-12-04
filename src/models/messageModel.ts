@@ -31,24 +31,32 @@ export const createConversationBetween = async (a: string, b: string) => {
 };
 
 export const createMessage = async (fromUserId: string, toUserId: string, text: string) => {
-  
   let convId = await findConversationBetween(fromUserId, toUserId);
   if (!convId) convId = await createConversationBetween(fromUserId, toUserId);
 
   const result = await db.query(
-    `INSERT INTO messages (conversation_id, sender_id, text, created_at)
-     VALUES ($1, $2, $3, now()) RETURNING id, conversation_id, sender_id, text, created_at`,
+    `INSERT INTO messages (conversation_id, sender_id, text, created_at, is_read)
+     VALUES ($1, $2, $3, now(), FALSE)
+     RETURNING id, conversation_id, sender_id, text, created_at, is_read`,
     [convId, fromUserId, text]
   );
   return result.rows[0];
 };
 
+
 export const getMessagesBetween = async (a: string, b: string) => {
   const convId = await findConversationBetween(a, b);
   if (!convId) return [];
-  const result = await db.query(`SELECT id, conversation_id, sender_id, text, created_at FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC`, [convId]);
+  const result = await db.query(
+    `SELECT id, conversation_id, sender_id, text, created_at, is_read, read_at
+     FROM messages 
+     WHERE conversation_id = $1 
+     ORDER BY created_at ASC`,
+    [convId]
+  );
   return result.rows;
 };
+
 
 export const getConversationsForUser = async (userId: string) => {
   const result = await db.query(
@@ -81,4 +89,67 @@ export const getConversationsForUser = async (userId: string) => {
       created_at: r.created_at,
     },
   }));
+};
+
+export const countUnreadMessages = async (userId: string) => {
+  const result = await db.query(
+    `
+    SELECT COUNT(*) AS unread
+    FROM messages m
+    JOIN conversation_participants cp
+      ON cp.conversation_id = m.conversation_id
+    WHERE cp.user_id = $1
+      AND m.sender_id <> $1
+      AND m.is_read = FALSE
+    `,
+    [userId]
+  );
+
+  return Number(result.rows[0].unread);
+};
+
+export const countUnreadInConversation = async (
+  conversationId: string,
+  userId: string
+) => {
+  const result = await db.query(
+    `
+    SELECT COUNT(*) AS unread
+    FROM messages
+    WHERE conversation_id = $1
+      AND sender_id <> $2
+      AND is_read = FALSE
+    `,
+    [conversationId, userId]
+  );
+
+  return Number(result.rows[0].unread);
+};
+
+export const markMessagesAsRead = async (conversationId: string, userId: string) => {
+  const countRes = await db.query(
+    `
+    SELECT COUNT(*) AS unread
+    FROM messages
+    WHERE conversation_id = $1
+      AND sender_id <> $2
+      AND is_read = FALSE
+    `,
+    [conversationId, userId]
+  );
+
+  const unreadBefore = Number(countRes.rows[0].unread);
+
+  await db.query(
+    `
+    UPDATE messages
+    SET is_read = TRUE, read_at = now()
+    WHERE conversation_id = $1
+      AND sender_id <> $2
+      AND is_read = FALSE
+    `,
+    [conversationId, userId]
+  );
+
+  return unreadBefore;
 };

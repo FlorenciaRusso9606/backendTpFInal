@@ -1,75 +1,73 @@
 require('dotenv').config();
-const express = require("express");
+import express, { Request, Response, NextFunction } from "express";
 const cors = require("cors");
-const http = require("http");
-const { Server: SocketIOServer } = require("socket.io");
-const cookieParser = require("cookie-parser");
+import http from "http";
+import cookieParser from "cookie-parser";
 const session = require("express-session");
+import passport from "./config/passport";
 
-import type { Request, Response, NextFunction } from "express";
-
+// routes
 import translationRoutes from "./routes/translationRoutes";
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import blockRoutes from "./routes/blockRoutes";
-import { attachIO } from "./middleware/socket";
 import postRoutes from "./routes/postRoutes";
 import reactionRoutes from "./routes/reactionRoutes";
 import commentRoutes from "./routes/commentRoutes";
 import followRoutes from "./routes/followRoutes";
 import messageRoutes from "./routes/messageRoutes";
 import reportRoutes from "./routes/reportRoutes";
-import passport from "./config/passport";
+import notificationRoutes from "./routes/notificationRoutes";
 import countryRoutes from "./routes/countryRoutes";
 import weatherRoutes from "./routes/weatherRoutes";
 import photoRoutes from "./routes/photoRoutes";
 import debugRoutes from "./routes/debugRoutes";
-import "express-session";
-import { ENV } from "./config/env";
+
+// Sockets
+const { Server: SocketIOServer } = require("socket.io");
 import initChat from "./sockets/chat";
+import { initNotifications } from "./sockets/notifications";
+import { attachIO } from "./middleware/socket";
+import "express-session";
+import { attachNotificationService } from "./middleware/notification";
+
+// Utils
+import { ENV } from "./config/env";
 import { crearJWT } from "./utils/createJWT";
+import db from "./db";
+import NotificationService from "./services/notificationService";
+
+import 'express-session'
 
 const app = express();
-
-// -------------------------------
-// PUERTO
-// -------------------------------
 const PORT = process.env.PORT || 3001;
 
-// -------------------------------
-// BACKEND_URL
-// Producción = Railway asigna dominio HTTPS 
-// Dev = localhost 
-// -------------------------------
+// Backend URL
 const BACKEND_URL =
   process.env.NODE_ENV === "production"
     ? ENV.BACKEND_URL
     : `http://localhost:${PORT}`;
 
-// -------------------------------
-// CORS
-// -------------------------------
 app.use(
   cors({
     origin:
       process.env.NODE_ENV === "production"
         ? [
-            "https://www.bloop.cool",
-            "https://bloop.cool",
-            "https://api.bloop.cool"
-            
-          ]
+          "https://www.bloop.cool",
+          "https://bloop.cool",
+          "https://api.bloop.cool"
+
+        ]
         : [
-         
-            "http://localhost:3000",
-            "http://localhost:4000",
-            "http://localhost:8081",
-            ENV.FRONTEND_URL,
-          ],
+          "http://localhost:3000",
+          "http://localhost:4000",
+          "http://localhost:8081",
+          ENV.FRONTEND_URL,
+        ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    allowedHeaders:  ["Content-Type", "content-type", "Authorization", "authorization",  "Set-Cookie"],
+    allowedHeaders: ["Content-Type", "content-type", "Authorization", "authorization", "Set-Cookie"],
   })
 );
 
@@ -78,12 +76,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.set("trust proxy", 1);
 
-// -------------------------------
-// SESIONES
-// En prod: secure + sameSite none + domain .bloop.cool  
-// En dev: nada 
-// -------------------------------
+
+// SESSION
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === "production" ? ".bloop.cool" : undefined);
+
 const sessionCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
@@ -91,7 +87,9 @@ const sessionCookieOptions = {
   domain: COOKIE_DOMAIN,
   path: "/",
 };
+
 console.log("Session cookie options:", sessionCookieOptions);
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "supersecret",
@@ -106,9 +104,7 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// -------------------------------
-// AUTH GOOGLE
-// -------------------------------
+// GOOGLE LOGIN
 app.get("/auth/google", (req: Request, res: Response, next: NextFunction) => {
   try {
     const mobileRedirect = req.query.redirect as string | undefined;
@@ -126,7 +122,7 @@ app.get("/auth/google", (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// CALLBACK GOOGLE
+// GOOGLE CALLBACK
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", {
@@ -166,9 +162,7 @@ app.get(
   }
 );
 
-// -------------------------------
-// SOCKET.IO
-// -------------------------------
+// HTTP + SOCKET.IO
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
@@ -181,14 +175,19 @@ const io = new SocketIOServer(server, {
   },
 });
 
-initChat(io);
-app.use(attachIO(io));
+// Services
+const notificationService = new NotificationService(db, io);
 
-// -------------------------------
-// Rutas API
-// -------------------------------
+// Socket Handlers
+initChat(io);
+initNotifications(io)
+
+// Middleware
+app.use(attachIO(io));
+app.use(attachNotificationService(io))
+
+// ROUTES
 app.use("/api/auth", authRoutes);
-// Alias for legacy/frontend calls that target `/auth` instead of `/api/auth`
 app.use("/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
@@ -197,6 +196,7 @@ app.use("/api/posts", postRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/reactions", reactionRoutes);
 app.use("/api/translate", translationRoutes);
+app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/follow", followRoutes);
 app.use("/api/messages", messageRoutes);
@@ -205,9 +205,7 @@ app.use("/api/weather", weatherRoutes);
 app.use("/api/photo", photoRoutes);
 app.use("/api/debug", debugRoutes);
 
-// -------------------------------
-// SERVER UP
-// -------------------------------
+// INICIAR
 server.listen(PORT, () =>
   console.log(`🚀 Servidor corriendo en ${BACKEND_URL}`)
 );
