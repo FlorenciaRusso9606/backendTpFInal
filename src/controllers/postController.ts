@@ -27,10 +27,11 @@ const upload = multer({
 export const myPostsController = async (req: Request, res: Response) => {
   try {
     const authorId = (req as any).user?.id
+const visibility = req.query.visibility as string | undefined;
     if (!authorId) return res.status(401).json({ error: 'No autenticado' })
-    // Use dedicated model query to fetch posts by this author
-    const posts = await getPostsByAuthor(authorId)
-    res.json({ data: posts })
+       const posts = await getPostsByAuthor(authorId, visibility);
+
+  res.json({ data: posts })
   } catch (err) {
     console.error('myPosts error', err)
     res.status(500).json({ error: 'Error al obtener tus posts' })
@@ -363,7 +364,6 @@ if (mode === "public") {
   }
 };
 
-/*----------------- ACÁ ESTÁN LOS NUEVOS CAMBIOOOOS -----------------------*/
 
 export async function getAllFeed(req: Request, res: Response) {
     const userId = (req as any).user?.id;

@@ -179,7 +179,12 @@ export const getPostsByFollowed = async (userId: string) => {
   });
 };
 
-export const getPostsByAuthor = async (authorId: string) => {
+export const getPostsByAuthor = async (authorId: string, visibility?: string) => {
+  const visibilityFilter =
+    visibility && ["public", "followers", "intimate"].includes(visibility)
+      ? `AND p.visibility = '${visibility}'`
+      : "";
+
   const q = `
     SELECT 
       p.*,
@@ -226,7 +231,7 @@ export const getPostsByAuthor = async (authorId: string) => {
 
     WHERE p.author_id = $1 
       AND p.is_blocked = FALSE
-      AND p.visibility IN ('public', 'followers', 'intimate')
+      ${visibilityFilter}
       AND (p.shared_post_id IS NULL OR (sp.id IS NOT NULL AND sp.is_blocked = FALSE))
 
     GROUP BY p.id, u.id, sp.id, spu.id
@@ -240,22 +245,25 @@ export const getPostsByAuthor = async (authorId: string) => {
     id: row.id,
     text: row.text,
     link_url: row.link_url,
-    weather: row.weather ? (typeof row.weather === 'string' ? JSON.parse(row.weather) : row.weather) : null,
+    weather: row.weather ? (typeof row.weather === "string" ? JSON.parse(row.weather) : row.weather) : null,
     created_at: row.created_at,
     author: row.author,
     medias: row.medias || [],
-    shared_post: row.shared_post_id && row.shared_post_id_visible
-      ? {
-          id: row.shared_post_id,
-          text: row.shared_post_text,
-          link_url: row.shared_post_link,
-          created_at: row.shared_post_created_at,
-          author: row.shared_author,
-          medias: row.shared_medias || [],
-        }
-      : null,
+    visibility: row.visibility,
+    shared_post:
+      row.shared_post_id && row.shared_post_id_visible
+        ? {
+            id: row.shared_post_id,
+            text: row.shared_post_text,
+            link_url: row.shared_post_link,
+            created_at: row.shared_post_created_at,
+            author: row.shared_author,
+            medias: row.shared_medias || [],
+          }
+        : null,
   }));
 };
+
 
 export const deletePostById = async (postId: string) => {
   await db.query(`DELETE FROM post WHERE id = $1`, [postId]);
@@ -447,6 +455,7 @@ export const getPostsByUserId = async (authorId: string, viewerId: string) => {
     created_at: row.created_at,
     weather: typeof row.weather === "string" ? JSON.parse(row.weather) : row.weather,
     visibility: row.visibility,
+
 
     author: {
       id: row.author_id,
