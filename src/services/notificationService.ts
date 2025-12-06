@@ -132,8 +132,8 @@ export default class NotificationService {
               'displayname', u.displayname,
               'profile_picture_url', u.profile_picture_url
             ) AS author
-          FROM comments c
-          JOIN users u ON u.id = c.user_id
+          FROM user_comments c
+          JOIN users u ON u.id = c.author_id
           WHERE c.id = $1
         `,
           [refId]

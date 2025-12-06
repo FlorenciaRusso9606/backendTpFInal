@@ -19,9 +19,13 @@ const parseWeather = (w: any) => {
 };
 
 export const getPostOwner = async (postId: string) => {
-  const result = await db.query("SELECT author_id FROM post WHERE id = $1", [postId]);
-  return result.rows[0]?.user_id;
+  const result = await db.query(
+    "SELECT author_id FROM post WHERE id = $1",
+    [postId]
+  );
+  return result.rows[0]?.author_id;
 };
+
 
 export const createMedia = async (url: string, type: string, size: number, uploaderId?: string, post_id?: string | null) => {
   const id = randomUUID();
