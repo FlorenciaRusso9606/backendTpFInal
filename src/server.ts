@@ -5,7 +5,7 @@ import http from "http";
 import cookieParser from "cookie-parser";
 const session = require("express-session");
 import passport from "./config/passport";
-
+import { logger } from "./utils/logger";
 // routes
 import notificationRoutes from './routes/notificationRoutes'
 import translationRoutes from "./routes/translationRoutes";
@@ -89,7 +89,6 @@ const sessionCookieOptions = {
   path: "/",
 };
 
-console.log("Session cookie options:", sessionCookieOptions);
 
 app.use(
   session({
@@ -149,13 +148,7 @@ app.get(
       path: "/",
       domain: cookieDomain,
     } as any;
-    console.log("Setting auth cookie (google callback) with options:", {
-      httpOnly: cookieOptions.httpOnly,
-      secure: cookieOptions.secure,
-      sameSite: cookieOptions.sameSite,
-      domain: cookieOptions.domain,
-      path: cookieOptions.path,
-    });
+   
 
     res.cookie("token", token, cookieOptions);
 
@@ -205,6 +198,7 @@ app.use("/api/debug", debugRoutes);
 app.use('/api/notifications', notificationRoutes)
 
 // INICIAR
-server.listen(PORT, () =>
-  console.log(`🚀 Servidor corriendo en ${BACKEND_URL}`)
-);
+server.listen(PORT, () => {
+  logger.info(`Servidor corriendo en ${BACKEND_URL}`);
+});
+

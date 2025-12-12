@@ -79,12 +79,10 @@ passport.use(
 
 // Serialización y deserialización
 passport.serializeUser((user: any, done) => {
-  console.log(" Serialize user:", user?.id);
   done(null, user.id);
 });
 
 passport.deserializeUser(async (id: string, done) => {
-  console.log(" Deserialize user id:", id);
   try {
     const { rows } = await db.query("SELECT * FROM users WHERE id = $1", [id]);
     done(null, rows[0] || null);

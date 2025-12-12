@@ -30,9 +30,7 @@ const transporter = nodemailer.createTransport({
   socketTimeout: Number(process.env.EMAIL_TIMEOUT_MS) || 10000,
 });
 
-console.log(
-  `[mailer] provider=${useResend ? "RESEND" : "SMTP"} host=${process.env.EMAIL_HOST} port=${process.env.EMAIL_PORT} secure=${process.env.EMAIL_SECURE}`
-);
+
 
 function normalizeFrom(fromRaw?: string) {
   if (!fromRaw) return undefined;
@@ -54,7 +52,6 @@ function normalizeFrom(fromRaw?: string) {
 }
 
 const FROM = normalizeFrom(process.env.EMAIL_FROM);
-console.log(`[mailer] using FROM='${FROM}'`);
 
 
 async function sendMailWithTimeout(mailOptions: nodemailer.SendMailOptions) {
@@ -89,12 +86,10 @@ export async function sendVerificationEmail(
         subject: "Verifica tu cuenta en La Red",
         html,
       });
-      console.log("Resend response:", resp);
       if (resp && resp.error) {
         console.error("Resend error sending verification email to", to, resp.error);
         return false;
       }
-      console.log("Verification email sent via Resend to", to);
       return true;
     }
 
@@ -104,7 +99,6 @@ export async function sendVerificationEmail(
       subject: "Verifica tu cuenta de Bloop",
       html,
     });
-    console.log("Verification email sent to", to);
     return true;
   } catch (err) {
     console.error("Error enviando email a", to, err);
@@ -138,12 +132,10 @@ export async function sendStatusChangeEmail(
             : "Tu cuenta ha sido reactivada",
         html,
       });
-      console.log("Resend response:", resp);
       if (resp && resp.error) {
         console.error("Resend error sending status-change email to", to, resp.error);
         return false;
       }
-      console.log("Status change email sent via Resend to", to);
       return true;
     }
 
@@ -156,7 +148,6 @@ export async function sendStatusChangeEmail(
           : "Tu cuenta ha sido reactivada",
       html,
     });
-    console.log("Status change email sent to", to);
     return true;
   } catch (err) {
     console.error("Error enviando email de cambio de estado a", to, err);

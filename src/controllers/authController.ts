@@ -38,7 +38,6 @@ export const registerUser = async (req: Request, res: Response) => {
     await AuthModel.createEmailVerification(newUser.id, token, expiresAt);
 
     const mailSent = await sendVerificationEmail(newUser.email, token);
-    console.log("sendVerificationEmail returned:", mailSent);
     if (!mailSent) {
       console.warn("No se pudo enviar el email de verificación para user:", newUser.id);
     }
@@ -97,14 +96,6 @@ export const loginUser = async (req: Request, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     } as any;
 
-    // Log cookie options (do not log token value)
-    console.log("Setting auth cookie with options:", {
-      httpOnly: cookieOptions.httpOnly,
-      secure: cookieOptions.secure,
-      sameSite: cookieOptions.sameSite,
-      domain: cookieOptions.domain,
-      path: cookieOptions.path,
-    });
 
     res.cookie("token", token, cookieOptions);
 

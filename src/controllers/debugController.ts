@@ -6,7 +6,6 @@ export const sendTestEmail = async (req: Request, res: Response) => {
     const to = req.body?.to as string | undefined;
     if (!to) return res.status(400).json({ error: "Missing 'to' in body" });
 
-    console.log("[debug] sendTestEmail to:", to);
     const ok = await sendVerificationEmail(to, "debug-test-token");
     if (ok) return res.json({ ok: true, message: "Email sent (or queued)" });
     return res.status(500).json({ ok: false, error: "Failed to send email" });
@@ -27,7 +26,6 @@ export const showEnv = (req: Request, res: Response) => {
       EMAIL_USER: process.env.EMAIL_USER,
       SENDGRID: !!process.env.SENDGRID_API_KEY,
     };
-    console.log("[debug] env check from origin=", req.headers.origin);
     return res.json({ ok: true, env });
   } catch (err) {
     console.error("[debug] showEnv error:", err);
@@ -40,7 +38,6 @@ export const fetchUrl = async (req: Request, res: Response) => {
     const url = String(req.query.url || req.body?.url || "");
     if (!url) return res.status(400).json({ ok: false, error: "Missing 'url' param or body" });
 
-    console.log(`[debug] fetchUrl -> attempting to fetch: ${url}`);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     let resp;

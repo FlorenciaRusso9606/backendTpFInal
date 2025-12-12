@@ -70,19 +70,14 @@ export const insertComment = async (req: Request, res: Response) => {
     const notificationService: NotificationService = (req as any).notificationService;
 
     let targetUserId: string | null = null;
-console.log("parent_id:", parent_id);
-console.log("post_id:", post_id);
 
    if (parent_id) {
   const owner = await getCommentOwner(parent_id);
-  console.log("Dueño del comentario:", owner);
   targetUserId = owner;
 } else {
   const owner = await getPostOwner(post_id);
-  console.log("Dueño del post:", owner);
   targetUserId = owner;
 }
-console.log("Enviando notificación COMMENT a ", targetUserId);
 
     if (targetUserId && targetUserId !== author_id) {
       const notif = await notificationService.createNotification({

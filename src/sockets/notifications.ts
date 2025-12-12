@@ -30,7 +30,6 @@ export function initNotifications(io: Server) {
             sockets.add(socket.id)
             userSockets.set(userId, sockets)
 
-            console.log(`🔌 Usuario ${userId} conectado. Sockets activos: ${[...sockets]}`)
         }
 
         // Manejo desconexión
@@ -49,8 +48,6 @@ export function initNotifications(io: Server) {
 export function sendNotification(io: Server, userId: string, notification: any) {
     const sockets = (io as any).userSockets.get(userId)
     if (!sockets) return;
-console.log("Sockets del usuario:", sockets);
-console.log("ENVIANDO NOTIFICACIÓN POR SOCKET:", notification);
 
     sockets.forEach((socketId: string) => {
         io.to(socketId).emit("notification", notification)

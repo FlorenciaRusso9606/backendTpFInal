@@ -1,4 +1,4 @@
-// src/db.ts
+import { logger } from "./utils/logger";
 import { Pool } from "pg";
 import { config } from "dotenv";
 config();
@@ -16,7 +16,7 @@ const db = new Pool({
 
 
 db.on("connect", () => {
-  console.log("✅ Conectado a la base de datos con SSL");
+  logger.info("Conectado a la base de datos con SSL");
 });
 
 db.on("error", (err) => {

@@ -89,7 +89,6 @@ export const getUnreadCount = async (req: Request, res: Response) => {
 };
 
 export const markConversationAsRead = async (req: Request, res: Response) => {
-  console.log("BODY recibido en mark-read:", req.body);
   try {
     const { conversationId }: { conversationId: string } = req.body;
     const userId: string = (req as any).user.id;
